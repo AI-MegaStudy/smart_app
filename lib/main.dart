@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_app/view/main_shell.dart';
+import 'package:smart_app/repositories/dashboard_repository.dart';
+import 'package:smart_app/view/login_page.dart';
 import 'package:smart_app/vm/dashboard_viewmodel.dart';
-import 'repositories/dashboard_repository.dart';
 
 void main() {
   runApp(const OwnerApp());
@@ -21,13 +21,63 @@ class OwnerApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: '점주 관리 앱',
+        title: 'Harvest Slot 점주앱',
         theme: ThemeData(
           useMaterial3: true,
-          colorSchemeSeed: Colors.green,
-          scaffoldBackgroundColor: const Color(0xffF7F8FA),
+          fontFamily: 'Roboto',
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff215C42),
+            primary: const Color(0xff215C42),
+            secondary: const Color(0xffF4C95D),
+            surface: const Color(0xffFCFEFA),
+          ),
+          scaffoldBackgroundColor: const Color(0xffF7FAF4),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 15,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xffDAE4D8)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xffDAE4D8)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xff215C42),
+                width: 1.4,
+              ),
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: Colors.white,
+            indicatorColor: const Color(0xffDFF4E8),
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (states) => TextStyle(
+                fontSize: 12,
+                fontWeight: states.contains(WidgetState.selected)
+                    ? FontWeight.w800
+                    : FontWeight.w600,
+              ),
+            ),
+          ),
         ),
-        home: const MainShell(),
+        home: const LoginPage(),
       ),
     );
   }

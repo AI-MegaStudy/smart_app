@@ -15,11 +15,11 @@ class DashboardModel {
 
   factory DashboardModel.demo() {
     return DashboardModel(
-      openSlots: 3,
-      newProcurements: 5,
-      inspectionWaiting: 2,
-      readyToShip: 4,
-      returnRequests: 1,
+      openSlots: 6,
+      newProcurements: 4,
+      inspectionWaiting: 7,
+      readyToShip: 3,
+      returnRequests: 2,
     );
   }
 

@@ -1,5 +1,5 @@
 import 'package:smart_app/model/dashboard_model.dart';
-import '../core/api_service.dart';
+import 'package:smart_app/core/api_service.dart';
 
 class DashboardRepository {
   Future<DashboardModel> fetchDashboard() async {
