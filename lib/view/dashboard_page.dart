@@ -1,6 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_app/util/app_colors.dart';
+import 'package:smart_app/view/harvest_slot_page.dart';
+import 'package:smart_app/view/procurement_page.dart';
+import 'package:smart_app/view/quality_page.dart';
+import 'package:smart_app/view/return_page.dart';
+import 'package:smart_app/view/shipment_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 import 'package:smart_app/vm/dashboard_viewmodel.dart';
 
@@ -28,6 +33,10 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  void _openPage(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DashboardViewModel>();
@@ -53,25 +62,25 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icons.event_available_outlined,
               value: '${dashboard?.openSlots ?? 6}',
               label: '열린 수확 슬롯',
-              onTap: () => widget.onJump(0),
+              onTap: () => _openPage(const HarvestSlotPage()),
             ),
             MetricCard(
               icon: Icons.assignment_turned_in_outlined,
               value: '${dashboard?.newProcurements ?? 4}',
               label: '신규 발주',
-              onTap: () => widget.onJump(0),
+              onTap: () => _openPage(const ProcurementPage()),
             ),
             MetricCard(
               icon: Icons.center_focus_strong_outlined,
               value: '${dashboard?.inspectionWaiting ?? 7}',
               label: '선별 대기',
-              onTap: () => widget.onJump(0),
+              onTap: () => _openPage(const QualityPage()),
             ),
             MetricCard(
               icon: Icons.local_shipping_outlined,
               value: '${dashboard?.readyToShip ?? 3}',
               label: '배송 준비',
-              onTap: () => widget.onJump(0),
+              onTap: () => _openPage(const ShipmentPage()),
             ),
           ],
         ),
@@ -85,7 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
           subtitle: '홍길동 고객 · 2박스',
           badge: '대기',
           badgeColor: AppColors.yellow,
-          onTap: () => widget.onJump(0),
+          onTap: () => _openPage(const ProcurementPage()),
         ),
         DataTile(
           icon: Icons.keyboard_return,
@@ -93,7 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
           subtitle: '사진 2장 첨부 · 환불 검토',
           badge: '확인 필요',
           badgeColor: const Color(0xffFFE1DD),
-          onTap: () => widget.onJump(0),
+          onTap: () => _openPage(const ReturnPage()),
         ),
       ],
     );

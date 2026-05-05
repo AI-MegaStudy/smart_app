@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
@@ -61,9 +61,25 @@ class HarvestSlotPage extends StatelessWidget {
           DualActionBar(
             left: '임시 저장',
             right: '예약 오픈',
-            onLeftPressed: () =>
-                showOwnerSnack(context, '수확 슬롯 초안을 임시 저장했습니다.'),
-            onRightPressed: () => showOwnerSnack(context, '예약 오픈 상태로 전환했습니다.'),
+            onLeftPressed: () {
+              showConfirmAction(
+                context: context,
+                title: '수확 슬롯 임시 저장',
+                message: '입력한 수확 슬롯 초안을 임시 저장할까요?',
+                confirmLabel: '저장',
+                onConfirm: () =>
+                    showOwnerSnack(context, '수확 슬롯 초안을 임시 저장했습니다.'),
+              );
+            },
+            onRightPressed: () {
+              showConfirmAction(
+                context: context,
+                title: '예약 오픈',
+                message: '고객에게 예약 슬롯을 오픈할까요?',
+                confirmLabel: '예약 오픈',
+                onConfirm: () => showOwnerSnack(context, '예약 오픈 상태로 전환했습니다.'),
+              );
+            },
           ),
         ],
       ),

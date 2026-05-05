@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smart_app/util/app_colors.dart';
 
 void showOwnerSnack(BuildContext context, String message) {
@@ -12,6 +13,63 @@ void showOwnerSnack(BuildContext context, String message) {
       ),
     );
 }
+
+Future<void> showConfirmAction({
+  required BuildContext context,
+  required String title,
+  required String message,
+  String confirmLabel = '확인',
+  required VoidCallback onConfirm,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(confirmLabel),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed == true) {
+    onConfirm();
+  }
+}
+
+String objectParticle(String text) {
+  if (text.isEmpty) {
+    return '을';
+  }
+  final code = text.characters.last.runes.first;
+  if (code < 0xAC00 || code > 0xD7A3) {
+    return '을';
+  }
+  return (code - 0xAC00) % 28 == 0 ? '를' : '을';
+}
+
+String requiredMessage(String label) => '$label${objectParticle(label)} 입력하세요.';
+
+String selectMessage(String label) => '$label${objectParticle(label)} 선택하세요.';
 
 class AppScaffold extends StatelessWidget {
   final String title;
@@ -89,6 +147,7 @@ class HeroPanel extends StatelessWidget {
   final String title;
   final IconData icon;
   final bool compact;
+  final double? height;
 
   const HeroPanel({
     super.key,
@@ -96,12 +155,13 @@ class HeroPanel extends StatelessWidget {
     required this.title,
     required this.icon,
     this.compact = false,
+    this.height,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: compact ? 146 : 176,
+      height: height ?? 176,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.green,
@@ -117,11 +177,11 @@ class HeroPanel extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            right: -16,
-            bottom: -22,
+            right: 4,
+            bottom: -10,
             child: Icon(
               icon,
-              size: 140,
+              size: compact ? 112 : 132,
               color: Colors.white.withValues(alpha: 0.12),
             ),
           ),
@@ -382,8 +442,24 @@ class SectionHeader extends StatelessWidget {
 class LabeledField extends StatelessWidget {
   final String label;
   final String value;
+  final String? hintText;
+  final bool enabled;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final FormFieldValidator<String>? validator;
 
-  const LabeledField({super.key, required this.label, required this.value});
+  const LabeledField({
+    super.key,
+    required this.label,
+    required this.value,
+    this.hintText,
+    this.enabled = true,
+    this.controller,
+    this.keyboardType,
+    this.inputFormatters,
+    this.validator,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +468,26 @@ class LabeledField extends StatelessWidget {
       children: [
         _FieldLabel(label),
         const SizedBox(height: 7),
-        TextFormField(initialValue: value),
+        TextFormField(
+          controller: controller,
+          initialValue: controller == null ? value : null,
+          enabled: enabled,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          validator:
+              validator ??
+              (enabled
+                  ? (text) {
+                      if ((text ?? '').trim().isEmpty) {
+                        return requiredMessage(label);
+                      }
+                      return null;
+                    }
+                  : null),
+          decoration: InputDecoration(
+            hintText: hintText ?? '$label 입력 규칙에 맞게 작성하세요.',
+          ),
+        ),
       ],
     );
   }
@@ -401,8 +496,20 @@ class LabeledField extends StatelessWidget {
 class LabeledBox extends StatelessWidget {
   final String label;
   final String value;
+  final String? hintText;
+  final bool enabled;
+  final TextEditingController? controller;
+  final FormFieldValidator<String>? validator;
 
-  const LabeledBox({super.key, required this.label, required this.value});
+  const LabeledBox({
+    super.key,
+    required this.label,
+    required this.value,
+    this.hintText,
+    this.enabled = true,
+    this.controller,
+    this.validator,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +518,71 @@ class LabeledBox extends StatelessWidget {
       children: [
         _FieldLabel(label),
         const SizedBox(height: 7),
-        TextFormField(initialValue: value, minLines: 3, maxLines: 4),
+        TextFormField(
+          controller: controller,
+          initialValue: controller == null ? value : null,
+          enabled: enabled,
+          minLines: 3,
+          maxLines: 4,
+          validator:
+              validator ??
+              (enabled
+                  ? (text) {
+                      if ((text ?? '').trim().isEmpty) {
+                        return requiredMessage(label);
+                      }
+                      return null;
+                    }
+                  : null),
+          decoration: InputDecoration(
+            hintText: hintText ?? '$label 내용을 입력하세요.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class LabeledDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+  final String? hintText;
+
+  const LabeledDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FieldLabel(label),
+        const SizedBox(height: 7),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          menuMaxHeight: kMinInteractiveDimension * 5,
+          items: [
+            for (final item in items)
+              DropdownMenuItem(value: item, child: Text(item)),
+          ],
+          onChanged: onChanged,
+          validator: (text) {
+            if ((text ?? '').trim().isEmpty) {
+              return selectMessage(label);
+            }
+            return null;
+          },
+          decoration: InputDecoration(hintText: hintText ?? '$label을 선택하세요.'),
+        ),
       ],
     );
   }
@@ -495,6 +666,8 @@ class _SelectableChipRowState extends State<_SelectableChipRow> {
             ChoiceChip(
               selected: selectedIndex == i,
               label: Text(widget.labels[i]),
+              showCheckmark: true,
+              checkmarkColor: Colors.white,
               selectedColor: AppColors.green,
               labelStyle: TextStyle(
                 color: selectedIndex == i ? Colors.white : AppColors.muted,
@@ -505,6 +678,45 @@ class _SelectableChipRowState extends State<_SelectableChipRow> {
                   selectedIndex = i;
                 });
               },
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class FilterTabs extends StatelessWidget {
+  final List<String> labels;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  const FilterTabs({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final label in labels) ...[
+            ChoiceChip(
+              selected: selected == label,
+              label: Text(label),
+              showCheckmark: true,
+              checkmarkColor: Colors.white,
+              selectedColor: AppColors.green,
+              labelStyle: TextStyle(
+                color: selected == label ? Colors.white : AppColors.muted,
+                fontWeight: FontWeight.w900,
+              ),
+              onSelected: (_) => onChanged(label),
             ),
             const SizedBox(width: 8),
           ],
@@ -564,22 +776,25 @@ class DualActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton.tonal(
-            onPressed: onLeftPressed ?? () {},
-            child: Text(left),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonal(
+              onPressed: onLeftPressed ?? () {},
+              child: Text(left),
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: FilledButton(
-            onPressed: onRightPressed ?? () {},
-            child: Text(right),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton(
+              onPressed: onRightPressed ?? () {},
+              child: Text(right),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -592,7 +807,10 @@ class PrimaryAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(onPressed: onPressed ?? () {}, child: Text(label));
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: FilledButton(onPressed: onPressed ?? () {}, child: Text(label)),
+    );
   }
 }
 
@@ -651,7 +869,14 @@ class _Bar extends StatelessWidget {
 }
 
 class CameraPreviewCard extends StatelessWidget {
-  const CameraPreviewCard({super.key});
+  final IconData icon;
+  final String? label;
+
+  const CameraPreviewCard({
+    super.key,
+    this.icon = Icons.local_florist,
+    this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -665,9 +890,13 @@ class CameraPreviewCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          const Center(
-            child: Icon(Icons.local_florist, color: Colors.white, size: 92),
-          ),
+          Center(child: Icon(icon, color: Colors.white, size: 92)),
+          if (label != null)
+            Positioned(
+              left: 16,
+              top: 16,
+              child: StatusBadge(text: label!, color: Colors.white),
+            ),
           Center(
             child: Container(
               width: 166,
@@ -683,8 +912,8 @@ class CameraPreviewCard extends StatelessWidget {
             child: Transform.translate(
               offset: const Offset(0, 18),
               child: Container(
-                width: 62,
-                height: 62,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: AppColors.green,
                   shape: BoxShape.circle,
@@ -695,6 +924,44 @@ class CameraPreviewCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class DashTextInputFormatter extends TextInputFormatter {
+  final List<int> groups;
+
+  const DashTextInputFormatter(this.groups);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+    var offset = 0;
+    for (final size in groups) {
+      if (offset >= digits.length) {
+        break;
+      }
+      final end = (offset + size).clamp(0, digits.length);
+      if (buffer.isNotEmpty) {
+        buffer.write('-');
+      }
+      buffer.write(digits.substring(offset, end));
+      offset = end;
+    }
+    if (offset < digits.length) {
+      if (buffer.isNotEmpty) {
+        buffer.write('-');
+      }
+      buffer.write(digits.substring(offset));
+    }
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

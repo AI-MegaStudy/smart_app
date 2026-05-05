@@ -1,9 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
-class ShipmentPage extends StatelessWidget {
+class ShipmentPage extends StatefulWidget {
   const ShipmentPage({super.key});
+
+  @override
+  State<ShipmentPage> createState() => _ShipmentPageState();
+}
+
+class _ShipmentPageState extends State<ShipmentPage> {
+  final invoiceController = TextEditingController(text: '5891-1202-4810');
+  String courier = 'CJ대한통운';
+  String boxes = '2박스';
+  String weight = '10kg';
+
+  @override
+  void dispose() {
+    invoiceController.dispose();
+    super.dispose();
+  }
+
+  void _registerShipment() {
+    showConfirmAction(
+      context: context,
+      title: '배송 등록',
+      message: '$courier, $boxes, $weight 기준으로 배송 상태를 갱신할까요?',
+      confirmLabel: '등록',
+      onConfirm: () =>
+          showOwnerSnack(context, '$courier $boxes $weight 배송 정보가 등록되었습니다.'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +55,48 @@ class ShipmentPage extends StatelessWidget {
             badge: '준비',
             badgeColor: AppColors.mint,
           ),
-          const LabeledField(label: '택배사', value: 'CJ대한통운'),
-          const LabeledField(label: '송장 번호', value: '5891-1202-4810'),
-          const LabeledField(label: '발송 박스 수', value: '2박스'),
-          const LabeledField(label: '발송 중량', value: '10kg'),
-          PrimaryAction(
-            label: '배송 등록',
-            onPressed: () => showOwnerSnack(context, '배송 정보가 등록되었습니다.'),
+          LabeledDropdown(
+            label: '택배사',
+            value: courier,
+            items: const ['CJ대한통운', '롯데택배', '한진택배', '우체국택배', '로젠택배'],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => courier = value);
+              }
+            },
           ),
+          LabeledField(
+            label: '송장 번호',
+            value: '',
+            controller: invoiceController,
+            hintText: '송장 번호를 입력하세요.',
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              const DashTextInputFormatter([4, 4, 4]),
+            ],
+          ),
+          LabeledDropdown(
+            label: '발송 박스 수',
+            value: boxes,
+            items: [for (var i = 1; i <= 10; i++) '$i박스'],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => boxes = value);
+              }
+            },
+          ),
+          LabeledDropdown(
+            label: '발송 중량',
+            value: weight,
+            items: [for (var i = 1; i <= 20; i++) '${i}kg'],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => weight = value);
+              }
+            },
+          ),
+          PrimaryAction(label: '배송 등록', onPressed: _registerShipment),
         ],
       ),
     );

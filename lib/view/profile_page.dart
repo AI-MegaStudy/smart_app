@@ -43,9 +43,17 @@ class ProfilePage extends StatelessWidget {
         PrimaryAction(
           label: '로그아웃',
           onPressed: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-              (route) => false,
+            showConfirmAction(
+              context: context,
+              title: '로그아웃',
+              message: '현재 계정에서 로그아웃할까요?',
+              confirmLabel: '로그아웃',
+              onConfirm: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              },
             );
           },
         ),
