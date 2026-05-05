@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: '이메일',
+                          hintText: '이메일 형식으로 입력하세요.',
                           prefixIcon: Icon(Icons.mail_outline),
                         ),
                       ),
@@ -70,7 +70,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(
-                          hintText: '비밀번호',
+                          hintText: '비밀번호를 입력하세요.',
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
                       ),
