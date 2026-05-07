@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kpostal_plus/kpostal_plus.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
@@ -44,12 +45,6 @@ class _FarmDetailPageState extends State<FarmDetailPage> {
     '제주 제주시',
   ];
 
-  static const addresses = [
-    '충북 충주시 산척면 과수원길 24',
-    '충북 충주시 엄정면 햇살로 18',
-    '충북 충주시 동량면 사과밭길 7',
-  ];
-
   @override
   void dispose() {
     farmNameController.dispose();
@@ -61,33 +56,21 @@ class _FarmDetailPageState extends State<FarmDetailPage> {
   }
 
   Future<void> _searchAddress() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            children: [
-              const SectionHeader(title: '주소 검색 결과'),
-              const SizedBox(height: 12),
-              for (final address in addresses)
-                ListTile(
-                  title: Text(address),
-                  leading: const Icon(Icons.location_on_outlined),
-                  onTap: () => Navigator.of(context).pop(address),
-                ),
-            ],
-          ),
-        );
-      },
+    final selected = await Navigator.of(context).push<Kpostal>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => KpostalPlusView(
+          title: '주소 검색',
+          appBarColor: Theme.of(context).colorScheme.surface,
+          titleColor: Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
     );
-    if (selected != null) {
-      setState(() {
-        addressController.text = selected;
-      });
-    }
+    if (!mounted || selected == null) return;
+
+    setState(() {
+      addressController.text = selected.address;
+    });
   }
 
   void _save() {
@@ -148,6 +131,7 @@ class _FarmDetailPageState extends State<FarmDetailPage> {
               label: '주소',
               value: '',
               controller: addressController,
+              enabled: false,
               hintText: '검색 버튼을 눌러 주소를 선택하세요.',
             ),
             FilledButton.tonalIcon(

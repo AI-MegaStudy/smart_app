@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_app/util/app_colors.dart';
+import 'package:smart_app/view/orders_page.dart';
+import 'package:smart_app/view/procurement_status_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class ProcurementPage extends StatefulWidget {
@@ -10,106 +12,203 @@ class ProcurementPage extends StatefulWidget {
 }
 
 class _ProcurementPageState extends State<ProcurementPage> {
-  String filter = '전체';
-  String approvedBoxes = '2박스';
-  String approvedWeight = '10kg';
+  final searchController = TextEditingController();
+  final selectedIds = <String>{};
+  bool showSearch = false;
+  late final requests =
+      [
+          for (var i = 0; i < sampleOrders.length; i++)
+            _ApprovalRequest(
+              'order-$i',
+              sampleOrders[i].title,
+              sampleOrders[i].subtitle,
+              sampleOrders[i].status,
+              sampleOrders[i].status == '결제 완료',
+            ),
+        ].where((item) => !_handledProcurementIds.contains(item.id)).toList()
+        ..sort((a, b) {
+          if (a.enabled != b.enabled) {
+            return a.enabled ? -1 : 1;
+          }
+          return a.subtitle.compareTo(b.subtitle);
+        });
 
-  final procurements = const [
-    _Procurement(
-      '발주 2026-1012-04',
-      '홍길동 · 후지 5kg 2박스 · 오늘 14:02',
-      '승인 대기',
-      AppColors.yellow,
-    ),
-    _Procurement(
-      '발주 2026-1012-03',
-      '이수빈 · 홍로 3kg 1박스 · 오늘 13:18',
-      '승인 대기',
-      AppColors.yellow,
-    ),
-    _Procurement(
-      '발주 2026-1011-09',
-      '박서준 · 부사 3kg 1박스',
-      '승인 완료',
-      AppColors.mint,
-    ),
-    _Procurement(
-      '발주 2026-1010-02',
-      '김민지 · 재고 부족으로 거절',
-      '거절',
-      Color(0xffFFE1DD),
-    ),
-  ];
+  List<_ApprovalRequest> get enabledRequests =>
+      requests.where((item) => item.enabled).toList();
 
-  void _confirmDecision(String label, String message) {
+  bool get allSelected =>
+      enabledRequests.isNotEmpty &&
+      selectedIds.length == enabledRequests.length;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void _toggleAll(bool? selected) {
+    setState(() {
+      selectedIds
+        ..clear()
+        ..addAll(
+          selected == true
+              ? enabledRequests.map((item) => item.id)
+              : const <String>[],
+        );
+    });
+  }
+
+  void _confirmApprove() {
+    if (selectedIds.isEmpty) {
+      showOwnerSnack(context, '처리할 주문을 선택하세요.');
+      return;
+    }
     showConfirmAction(
       context: context,
-      title: '발주 $label',
-      message: '$approvedBoxes, $approvedWeight 기준으로 발주 상태를 갱신할까요?',
-      confirmLabel: label,
-      onConfirm: () => showOwnerSnack(context, message),
+      title: '발주 승인',
+      message: '선택한 ${selectedIds.length}건을 승인 처리할까요?',
+      confirmLabel: '승인',
+      onConfirm: () => _applyDecision('승인 완료'),
     );
+  }
+
+  Future<void> _confirmReject() async {
+    if (selectedIds.isEmpty) {
+      showOwnerSnack(context, '처리할 주문을 선택하세요.');
+      return;
+    }
+    var reason = '재고 부족';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('발주 거절'),
+              content: DropdownButtonFormField<String>(
+                initialValue: reason,
+                items: const [
+                  DropdownMenuItem(value: '재고 부족', child: Text('재고 부족')),
+                  DropdownMenuItem(value: '품질 기준 미달', child: Text('품질 기준 미달')),
+                  DropdownMenuItem(value: '출고 일정 불가', child: Text('출고 일정 불가')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => reason = value);
+                  }
+                },
+                decoration: const InputDecoration(labelText: '거절 사유'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('거절'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (confirmed == true) {
+      _applyDecision('거절', reason: reason);
+    }
+  }
+
+  void _applyDecision(String status, {String? reason}) {
+    final handled = requests
+        .where((item) => selectedIds.contains(item.id))
+        .toList(growable: false);
+    procurementStatusRecords.addAll([
+      for (final item in handled)
+        ProcurementStatusRecord(
+          '발주 ${item.id}',
+          reason == null ? item.subtitle : '${item.title} · $reason',
+          status,
+          status == '승인 완료' ? AppColors.mint : const Color(0xffFFE1DD),
+        ),
+    ]);
+    setState(() {
+      requests.removeWhere((item) => selectedIds.contains(item.id));
+      _handledProcurementIds.addAll(selectedIds);
+      selectedIds.clear();
+    });
+    showOwnerSnack(context, '발주 현황을 갱신했습니다.');
   }
 
   @override
   Widget build(BuildContext context) {
-    final visible = filter == '전체'
-        ? procurements
-        : procurements.where((item) => item.status == filter).toList();
+    final query = searchController.text.trim().toLowerCase();
+    final visible = requests.where((request) {
+      return query.isEmpty ||
+          '${request.title} ${request.subtitle} ${request.status}'
+              .toLowerCase()
+              .contains(query);
+    }).toList();
 
     return Scaffold(
       body: AppScaffold(
         title: '발주 승인',
-        subtitle: '결제 후 생성된 처리 요청',
+        subtitle: '예약 · 주문 현황 기반 승인',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
         ),
+        trailing: ActionChipIcon(
+          icon: showSearch ? Icons.close : Icons.search,
+          onPressed: () {
+            setState(() {
+              showSearch = !showSearch;
+              if (!showSearch) {
+                searchController.clear();
+              }
+            });
+          },
+        ),
         children: [
-          FilterTabs(
-            labels: const ['전체', '승인 대기', '승인 완료', '거절'],
-            selected: filter,
-            onChanged: (value) => setState(() => filter = value),
-          ),
-          for (final item in visible)
-            DataTile(
-              icon: Icons.inventory_2_outlined,
-              title: item.title,
-              subtitle: item.subtitle,
-              badge: item.status,
-              badgeColor: item.color,
+          if (showSearch)
+            TextField(
+              controller: searchController,
+              autofocus: true,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: '고객명, 상품명, 상태를 검색하세요',
+                prefixIcon: Icon(Icons.search),
+              ),
             ),
-          LabeledDropdown(
-            label: '승인 박스 수',
-            value: approvedBoxes,
-            items: [for (var i = 1; i <= 10; i++) '$i박스'],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => approvedBoxes = value);
-              }
-            },
+          CheckboxListTile(
+            value: allSelected,
+            onChanged: _toggleAll,
+            title: const Text(
+              '전체 선택',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
           ),
-          LabeledDropdown(
-            label: '승인 중량',
-            value: approvedWeight,
-            items: [for (var i = 1; i <= 20; i++) '${i}kg'],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => approvedWeight = value);
-              }
-            },
-          ),
+          for (final request in visible)
+            _ApprovalTile(
+              request: request,
+              selected: selectedIds.contains(request.id),
+              onChanged: (checked) {
+                setState(() {
+                  if (checked == true) {
+                    selectedIds.add(request.id);
+                  } else {
+                    selectedIds.remove(request.id);
+                  }
+                });
+              },
+            ),
           DualActionBar(
-            left: '부분 승인',
+            left: '거절',
             right: '승인',
-            onLeftPressed: () => _confirmDecision(
-              '부분 승인',
-              '$approvedBoxes, $approvedWeight 부분 승인으로 저장했습니다.',
-            ),
-            onRightPressed: () => _confirmDecision(
-              '승인',
-              '$approvedBoxes, $approvedWeight 발주를 승인했습니다.',
-            ),
+            onLeftPressed: _confirmReject,
+            onRightPressed: _confirmApprove,
           ),
         ],
       ),
@@ -117,11 +216,56 @@ class _ProcurementPageState extends State<ProcurementPage> {
   }
 }
 
-class _Procurement {
+final _handledProcurementIds = <String>{};
+
+class _ApprovalTile extends StatelessWidget {
+  final _ApprovalRequest request;
+  final bool selected;
+  final ValueChanged<bool?> onChanged;
+
+  const _ApprovalTile({
+    required this.request,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: request.enabled ? Colors.white : const Color(0xffF4F7F1),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: CheckboxListTile(
+          value: selected,
+          onChanged: request.enabled ? onChanged : null,
+          title: Text(
+            '${request.title} · ${request.status}',
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          subtitle: Text(request.subtitle),
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+      ),
+    );
+  }
+}
+
+class _ApprovalRequest {
+  final String id;
   final String title;
   final String subtitle;
   final String status;
-  final Color color;
+  final bool enabled;
 
-  const _Procurement(this.title, this.subtitle, this.status, this.color);
+  const _ApprovalRequest(
+    this.id,
+    this.title,
+    this.subtitle,
+    this.status,
+    this.enabled,
+  );
 }

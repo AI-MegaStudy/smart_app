@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_app/view/home.dart';
+import 'package:smart_app/view/signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,13 +38,18 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const _SeedLogo(),
                       const SizedBox(height: 170),
-                      const Text(
-                        '오늘 수확 운영을 시작하세요',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          height: 1.08,
+                      const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '오늘의 수확 운영을 시작하세요',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            height: 1.08,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -61,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: '이메일 형식으로 입력하세요.',
+                          hintText: '이메일 형식으로 입력하세요',
                           prefixIcon: Icon(Icons.mail_outline),
                         ),
                       ),
@@ -70,7 +76,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(
-                          hintText: '비밀번호를 입력하세요.',
+                          hintText: '비밀번호를 입력하세요',
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
                       ),
@@ -83,6 +89,17 @@ class _LoginPageState extends State<LoginPage> {
                           );
                         },
                         child: const Text('로그인'),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.tonal(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SignupPage(),
+                            ),
+                          );
+                        },
+                        child: const Text('회원가입'),
                       ),
                     ],
                   ),

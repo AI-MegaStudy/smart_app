@@ -45,16 +45,14 @@ class _DashboardPageState extends State<DashboardPage> {
     return AppScaffold(
       title: '안녕하세요, 김점주님',
       subtitle: '충주 햇살농원',
-      trailing: IconButton.filled(
-        onPressed: () => widget.onJump(2),
-        icon: const Text('김', style: TextStyle(fontWeight: FontWeight.w900)),
-      ),
       children: [
         HeroPanel(
           eyebrow: '오늘 우선 처리',
           title:
               '발주 ${dashboard?.newProcurements ?? 4}건과 선별 ${dashboard?.inspectionWaiting ?? 7}건이 기다립니다',
           icon: Icons.spa,
+          titleMaxLines: 1,
+          titleFontSize: 21,
         ),
         GridCards(
           children: [

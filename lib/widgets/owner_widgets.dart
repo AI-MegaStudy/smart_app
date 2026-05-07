@@ -71,6 +71,71 @@ String requiredMessage(String label) => '$label${objectParticle(label)} 입력�
 
 String selectMessage(String label) => '$label${objectParticle(label)} 선택하세요.';
 
+String? requiredPatternMessage({
+  required String label,
+  required String? value,
+  required RegExp pattern,
+  required String example,
+}) {
+  final text = (value ?? '').trim();
+  if (text.isEmpty) {
+    return requiredMessage(label);
+  }
+  if (!pattern.hasMatch(text)) {
+    return '$label 형식을 확인하세요. 예: $example';
+  }
+  return null;
+}
+
+String? phoneNumberValidator(String? value) => requiredPatternMessage(
+  label: '전화번호',
+  value: value,
+  pattern: RegExp(r'^01[016789]-\d{3,4}-\d{4}$'),
+  example: '010-0000-0000',
+);
+
+String? businessNumberValidator(String? value) => requiredPatternMessage(
+  label: '사업자번호',
+  value: value,
+  pattern: RegExp(r'^\d{3}-\d{2}-\d{5}$'),
+  example: '000-00-00000',
+);
+
+String? invoiceNumberValidator(String? value) => requiredPatternMessage(
+  label: '송장 번호',
+  value: value,
+  pattern: RegExp(r'^\d{4}-\d{4}-\d{4}$'),
+  example: '1234-1234-1234',
+);
+
+String? nameValidator(String? value) => requiredPatternMessage(
+  label: '이름',
+  value: value,
+  pattern: RegExp(r'^[가-힣a-zA-Z\s]{2,20}$'),
+  example: '김하늘',
+);
+
+String? emailValidator(String? value) => requiredPatternMessage(
+  label: '이메일',
+  value: value,
+  pattern: RegExp(r'^[\w.\-]+@[\w\-]+(\.[\w\-]+)+$'),
+  example: 'owner@example.com',
+);
+
+String? passwordValidator(String? value) => requiredPatternMessage(
+  label: '비밀번호',
+  value: value,
+  pattern: RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$'),
+  example: 'abc12345',
+);
+
+String? numericValidator(String? value) => requiredPatternMessage(
+  label: '숫자',
+  value: value,
+  pattern: RegExp(r'^\d+$'),
+  example: '123',
+);
+
 class AppScaffold extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -89,54 +154,62 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
-              child: Row(
-                children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 14)],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: AppColors.text,
-                            fontSize: 23,
-                            fontWeight: FontWeight.w900,
-                            height: 1.15,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: SafeArea(
+        child: CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+                child: Row(
+                  children: [
+                    if (leading != null) ...[
+                      leading!,
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 23,
+                              fontWeight: FontWeight.w900,
+                              height: 1.15,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  ?trailing,
-                ],
+                    ?trailing,
+                  ],
+                ),
               ),
             ),
-          ),
-          SliverList.separated(
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: children[index],
+            SliverList.separated(
+              itemBuilder: (context, index) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: children[index],
+              ),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemCount: children.length,
             ),
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemCount: children.length,
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
       ),
     );
   }
@@ -148,6 +221,8 @@ class HeroPanel extends StatelessWidget {
   final IconData icon;
   final bool compact;
   final double? height;
+  final int titleMaxLines;
+  final double? titleFontSize;
 
   const HeroPanel({
     super.key,
@@ -156,6 +231,8 @@ class HeroPanel extends StatelessWidget {
     required this.icon,
     this.compact = false,
     this.height,
+    this.titleMaxLines = 3,
+    this.titleFontSize,
   });
 
   @override
@@ -199,11 +276,11 @@ class HeroPanel extends StatelessWidget {
               const SizedBox(height: 9),
               Text(
                 title,
-                maxLines: 3,
+                maxLines: titleMaxLines,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: compact ? 28 : 26,
+                  fontSize: titleFontSize ?? (compact ? 28 : 26),
                   fontWeight: FontWeight.w900,
                   height: 1.08,
                 ),
@@ -448,6 +525,7 @@ class LabeledField extends StatelessWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
+  final String? suffixText;
 
   const LabeledField({
     super.key,
@@ -459,6 +537,7 @@ class LabeledField extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.validator,
+    this.suffixText,
   });
 
   @override
@@ -486,9 +565,48 @@ class LabeledField extends StatelessWidget {
                   : null),
           decoration: InputDecoration(
             hintText: hintText ?? '$label 입력 규칙에 맞게 작성하세요.',
+            suffixText: suffixText,
           ),
         ),
       ],
+    );
+  }
+}
+
+class LabeledNumberField extends StatelessWidget {
+  final String label;
+  final String value;
+  final String suffixText;
+  final String? hintText;
+  final TextEditingController? controller;
+  final FormFieldValidator<String>? validator;
+
+  const LabeledNumberField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.suffixText,
+    this.hintText,
+    this.controller,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LabeledField(
+      label: label,
+      value: value,
+      controller: controller,
+      hintText: hintText ?? '숫자만 입력하세요.',
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      validator:
+          validator ??
+          (text) {
+            final base = numericValidator(text);
+            return base == null ? null : '$label에는 숫자만 입력하세요.';
+          },
+      suffixText: suffixText,
     );
   }
 }
@@ -820,21 +938,54 @@ class YieldChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 132,
-      padding: const EdgeInsets.all(16),
+      height: 164,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: AppColors.line),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: const [
-          _Bar(height: 54),
-          _Bar(height: 74),
-          _Bar(height: 94),
-          _Bar(height: 82),
-          _Bar(height: 62),
+      child: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (var i = 0; i < 4; i++)
+                      Container(
+                        height: 1,
+                        color: AppColors.line.withValues(alpha: 0.7),
+                      ),
+                  ],
+                ),
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _Bar(height: 54),
+                    _Bar(height: 78),
+                    _Bar(height: 104),
+                    _Bar(height: 92),
+                    _Bar(height: 68),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          const SizedBox(
+            height: 12,
+            child: Row(
+              children: [
+                _ChartLabel('10.12'),
+                _ChartLabel('10.13'),
+                _ChartLabel('10.14'),
+                _ChartLabel('10.15'),
+                _ChartLabel('10.16'),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -849,19 +1000,45 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          height: height,
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [AppColors.green, AppColors.mint],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            height: height,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.green, AppColors.mint],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
             ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLabel extends StatelessWidget {
+  final String label;
+
+  const _ChartLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Text(
+        label,
+        maxLines: 1,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -871,11 +1048,19 @@ class _Bar extends StatelessWidget {
 class CameraPreviewCard extends StatelessWidget {
   final IconData icon;
   final String? label;
+  final bool hasImage;
+  final Uint8List? imageBytes;
+  final Offset inspectionAnchor;
+  final ValueChanged<Offset>? onInspectionAnchorChanged;
 
   const CameraPreviewCard({
     super.key,
     this.icon = Icons.local_florist,
     this.label,
+    this.hasImage = false,
+    this.imageBytes,
+    this.inspectionAnchor = const Offset(0.5, 0.72),
+    this.onInspectionAnchorChanged,
   });
 
   @override
@@ -884,48 +1069,198 @@ class CameraPreviewCard extends StatelessWidget {
       height: 210,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xffB64033), Color(0xffF1B095)],
-        ),
+        color: Colors.white,
+        border: Border.all(color: AppColors.line),
       ),
-      child: Stack(
-        children: [
-          Center(child: Icon(icon, color: Colors.white, size: 92)),
-          if (label != null)
-            Positioned(
-              left: 16,
-              top: 16,
-              child: StatusBadge(text: label!, color: Colors.white),
-            ),
-          Center(
-            child: Container(
-              width: 166,
-              height: 116,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 3),
-                borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = Size(constraints.maxWidth, constraints.maxHeight);
+          final anchor = Offset(
+            inspectionAnchor.dx.clamp(0.0, 1.0) * size.width,
+            inspectionAnchor.dy.clamp(0.0, 1.0) * size.height,
+          );
+          void updateAnchorByDelta(Offset delta) {
+            final normalized = Offset(
+              ((anchor.dx + delta.dx) / size.width).clamp(0.0, 1.0),
+              ((anchor.dy + delta.dy) / size.height).clamp(0.0, 1.0),
+            );
+            onInspectionAnchorChanged?.call(normalized);
+          }
+
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: imageBytes == null
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: hasImage
+                              ? const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xff9F2F25),
+                                    Color(0xffE57352),
+                                    Color(0xffF6B38D),
+                                  ],
+                                )
+                              : const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xffF4F7F1),
+                                    Color(0xffDCECE4),
+                                  ],
+                                ),
+                        ),
+                      )
+                    : Image.memory(
+                        imageBytes!,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                      ),
               ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Transform.translate(
-              offset: const Offset(0, 18),
-              child: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.green,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 5),
+              if (imageBytes != null)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: hasImage ? const _ProduceTexturePainter() : null,
                 ),
               ),
-            ),
-          ),
-        ],
+              if (imageBytes == null)
+                Center(
+                  child: Icon(
+                    icon,
+                    color: Colors.white.withValues(
+                      alpha: hasImage ? 0.84 : 0.92,
+                    ),
+                    size: hasImage ? 118 : 82,
+                  ),
+                ),
+              if (label != null)
+                Positioned(
+                  left: 16,
+                  top: 16,
+                  child: StatusBadge(text: label!, color: Colors.white),
+                ),
+              if (hasImage)
+                _InspectionOverlayTool(
+                  anchor: anchor,
+                  onDragBy: updateAnchorByDelta,
+                )
+              else
+                const Center(
+                  child: Text(
+                    '갤러리에서 이미지를 선택하세요',
+                    style: TextStyle(
+                      color: AppColors.green,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
+}
+
+class _InspectionOverlayTool extends StatelessWidget {
+  final Offset anchor;
+  final ValueChanged<Offset> onDragBy;
+
+  const _InspectionOverlayTool({required this.anchor, required this.onDragBy});
+
+  static const boxWidth = 168.0;
+  static const boxHeight = 118.0;
+  static const handleSize = 26.0;
+  static const handleOverlap = 13.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final boxLeft = anchor.dx - boxWidth / 2;
+    final boxTop = anchor.dy - boxHeight - handleOverlap;
+    final handleLeft = anchor.dx - handleSize / 2;
+    final handleTop = anchor.dy - handleSize / 2;
+
+    return Stack(
+      children: [
+        Positioned(
+          left: boxLeft,
+          top: boxTop,
+          child: IgnorePointer(
+            child: Container(
+              width: boxWidth,
+              height: boxHeight,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 3),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: handleLeft,
+          top: handleTop,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanUpdate: (details) => onDragBy(details.delta),
+            child: Container(
+              width: handleSize,
+              height: handleSize,
+              decoration: BoxDecoration(
+                color: AppColors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProduceTexturePainter extends CustomPainter {
+  const _ProduceTexturePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.13);
+    final spots = [
+      Offset(size.width * 0.20, size.height * 0.32),
+      Offset(size.width * 0.38, size.height * 0.56),
+      Offset(size.width * 0.62, size.height * 0.36),
+      Offset(size.width * 0.78, size.height * 0.62),
+      Offset(size.width * 0.52, size.height * 0.72),
+    ];
+    for (final spot in spots) {
+      canvas.drawCircle(spot, 34, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class DashTextInputFormatter extends TextInputFormatter {
