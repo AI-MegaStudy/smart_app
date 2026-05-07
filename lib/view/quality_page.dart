@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
@@ -10,25 +12,99 @@ class QualityPage extends StatefulWidget {
 }
 
 class _QualityPageState extends State<QualityPage> {
-  IconData selectedIcon = Icons.local_florist;
-  String selectedLabel = '촬영 대기';
+  final imagePicker = ImagePicker();
+  Uint8List? selectedImageBytes;
+  String? selectedImageName;
+  Offset inspectionAnchor = const Offset(0.5, 0.72);
+
+  @override
+  void initState() {
+    super.initState();
+    _retrieveLostImage();
+  }
 
   Future<void> _openGallery() async {
-    final selected = await showModalBottomSheet<_GalleryImage>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => const _GalleryPicker(),
-    );
-    if (selected != null) {
-      setState(() {
-        selectedIcon = selected.icon;
-        selectedLabel = selected.label;
-      });
+    try {
+      final picked = await imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
+      if (picked == null) {
+        return;
+      }
+      await _setSelectedImage(picked);
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showOwnerSnack(context, _galleryErrorMessage(error));
+    } on MissingPluginException {
+      if (!mounted) {
+        return;
+      }
+      showOwnerSnack(context, '갤러리 플러그인이 아직 연결되지 않았습니다. 앱을 완전히 다시 실행하세요.');
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      showOwnerSnack(context, '갤러리를 여는 중 문제가 발생했습니다.');
     }
+  }
+
+  Future<void> _retrieveLostImage() async {
+    try {
+      final response = await imagePicker.retrieveLostData();
+      if (response.isEmpty) {
+        return;
+      }
+      if (response.exception != null) {
+        if (mounted) {
+          showOwnerSnack(context, _galleryErrorMessage(response.exception!));
+        }
+        return;
+      }
+
+      final files = response.files;
+      final picked = files?.isNotEmpty == true ? files!.last : response.file;
+      if (picked != null) {
+        await _setSelectedImage(picked);
+      }
+    } catch (_) {
+      // retrieveLostData is Android-only in practice; ignore unsupported paths.
+    }
+  }
+
+  Future<void> _setSelectedImage(XFile picked) async {
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    setState(() {
+      selectedImageBytes = bytes;
+      selectedImageName = picked.name.isEmpty ? '선택한 이미지' : picked.name;
+      inspectionAnchor = const Offset(0.5, 0.72);
+    });
+  }
+
+  String _galleryErrorMessage(PlatformException error) {
+    if (error.code == 'photo_access_denied' ||
+        error.code == 'camera_access_denied') {
+      return '사진 접근 권한을 허용한 뒤 다시 시도하세요.';
+    }
+    if (error.code == 'already_active') {
+      return '갤러리가 이미 열려 있습니다.';
+    }
+    final detail = error.message ?? error.details?.toString();
+    if (detail == null || detail.trim().isEmpty) {
+      return '갤러리를 여는 중 문제가 발생했습니다. (${error.code})';
+    }
+    return '갤러리를 여는 중 문제가 발생했습니다. (${error.code}: $detail)';
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = selectedImageBytes != null;
+
     return Scaffold(
       body: AppScaffold(
         title: '신선도 검사',
@@ -42,7 +118,16 @@ class _QualityPageState extends State<QualityPage> {
           onPressed: _openGallery,
         ),
         children: [
-          CameraPreviewCard(icon: selectedIcon, label: selectedLabel),
+          CameraPreviewCard(
+            icon: Icons.image_search_outlined,
+            label: hasImage ? selectedImageName : null,
+            hasImage: hasImage,
+            imageBytes: selectedImageBytes,
+            inspectionAnchor: inspectionAnchor,
+            onInspectionAnchorChanged: (anchor) {
+              setState(() => inspectionAnchor = anchor);
+            },
+          ),
           const NoticeBox(
             color: AppColors.blue,
             text: '판별 결과는 선별 보조 자료입니다. 최종 등급과 출고 여부는 점주가 확정합니다.',
@@ -72,80 +157,4 @@ class _QualityPageState extends State<QualityPage> {
       ),
     );
   }
-}
-
-class _GalleryPicker extends StatefulWidget {
-  const _GalleryPicker();
-
-  @override
-  State<_GalleryPicker> createState() => _GalleryPickerState();
-}
-
-class _GalleryPickerState extends State<_GalleryPicker> {
-  _GalleryImage selected = _GalleryImage.images.first;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SectionHeader(title: '갤러리'),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              children: [
-                for (final image in _GalleryImage.images)
-                  InkWell(
-                    onTap: () => setState(() => selected = image),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: selected == image
-                            ? AppColors.mint
-                            : Colors.white,
-                        border: Border.all(
-                          color: selected == image
-                              ? AppColors.green
-                              : AppColors.line,
-                          width: selected == image ? 2 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(image.icon, size: 42, color: AppColors.green),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            PrimaryAction(
-              label: '선택',
-              onPressed: () => Navigator.of(context).pop(selected),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GalleryImage {
-  final IconData icon;
-  final String label;
-
-  const _GalleryImage(this.icon, this.label);
-
-  static const images = [
-    _GalleryImage(Icons.local_florist, '사과 정면'),
-    _GalleryImage(Icons.eco_outlined, '색상 확인'),
-    _GalleryImage(Icons.spa_outlined, '표면 확대'),
-    _GalleryImage(Icons.grass_outlined, '꼭지 확인'),
-    _GalleryImage(Icons.yard_outlined, '상처 확인'),
-    _GalleryImage(Icons.filter_vintage_outlined, '샘플 컷'),
-  ];
 }

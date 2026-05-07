@@ -58,6 +58,7 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               value: '',
               controller: nameController,
               hintText: '예: 김하늘',
+              validator: nameValidator,
             ),
             LabeledField(
               label: '전화번호',
@@ -69,6 +70,7 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
                 FilteringTextInputFormatter.digitsOnly,
                 const DashTextInputFormatter([3, 4, 4]),
               ],
+              validator: phoneNumberValidator,
             ),
             LabeledField(
               label: '사업자번호',
@@ -80,6 +82,7 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
                 FilteringTextInputFormatter.digitsOnly,
                 const DashTextInputFormatter([3, 2, 5]),
               ],
+              validator: businessNumberValidator,
             ),
             NoticeRadioGroup(
               title: '발주 알림',
