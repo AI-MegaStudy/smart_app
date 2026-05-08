@@ -24,13 +24,15 @@ class _ProcurementPageState extends State<ProcurementPage> {
               sampleOrders[i].subtitle,
               sampleOrders[i].status,
               sampleOrders[i].status == '결제 완료',
+              sampleOrders[i].time,
+              sampleOrders[i].amount,
             ),
         ].where((item) => !_handledProcurementIds.contains(item.id)).toList()
         ..sort((a, b) {
           if (a.enabled != b.enabled) {
             return a.enabled ? -1 : 1;
           }
-          return a.subtitle.compareTo(b.subtitle);
+          return a.time.compareTo(b.time);
         });
 
   List<_ApprovalRequest> get enabledRequests =>
@@ -77,7 +79,7 @@ class _ProcurementPageState extends State<ProcurementPage> {
       showOwnerSnack(context, '처리할 주문을 선택하세요.');
       return;
     }
-    var reason = '재고 부족';
+    var reason = '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -88,6 +90,7 @@ class _ProcurementPageState extends State<ProcurementPage> {
               content: DropdownButtonFormField<String>(
                 initialValue: reason,
                 items: const [
+                  DropdownMenuItem(value: '', child: Text('선택하세요.')),
                   DropdownMenuItem(value: '재고 부족', child: Text('재고 부족')),
                   DropdownMenuItem(value: '품질 기준 미달', child: Text('품질 기준 미달')),
                   DropdownMenuItem(value: '출고 일정 불가', child: Text('출고 일정 불가')),
@@ -100,13 +103,24 @@ class _ProcurementPageState extends State<ProcurementPage> {
                 decoration: const InputDecoration(labelText: '거절 사유'),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('취소'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('거절'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.tonal(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: reason.isEmpty
+                            ? null
+                            : () => Navigator.of(context).pop(true),
+                        child: const Text('거절'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -126,8 +140,10 @@ class _ProcurementPageState extends State<ProcurementPage> {
     procurementStatusRecords.addAll([
       for (final item in handled)
         ProcurementStatusRecord(
-          '발주 ${item.id}',
-          reason == null ? item.subtitle : '${item.title} · $reason',
+          '2026-05-08 ${item.time}',
+          reason == null
+              ? '${item.title} · ${item.amount}'
+              : '${item.title} · $reason',
           status,
           status == '승인 완료' ? AppColors.mint : const Color(0xffFFE1DD),
         ),
@@ -260,6 +276,8 @@ class _ApprovalRequest {
   final String subtitle;
   final String status;
   final bool enabled;
+  final String time;
+  final String amount;
 
   const _ApprovalRequest(
     this.id,
@@ -267,5 +285,7 @@ class _ApprovalRequest {
     this.subtitle,
     this.status,
     this.enabled,
+    this.time,
+    this.amount,
   );
 }

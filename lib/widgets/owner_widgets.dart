@@ -102,7 +102,7 @@ String? businessNumberValidator(String? value) => requiredPatternMessage(
 );
 
 String? invoiceNumberValidator(String? value) => requiredPatternMessage(
-  label: '송장 번호',
+  label: '송장번호',
   value: value,
   pattern: RegExp(r'^\d{4}-\d{4}-\d{4}$'),
   example: '1234-1234-1234',
@@ -516,10 +516,11 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-class LabeledField extends StatelessWidget {
+class LabeledField extends StatefulWidget {
   final String label;
   final String value;
   final String? hintText;
+  final String? regexHint;
   final bool enabled;
   final TextEditingController? controller;
   final TextInputType? keyboardType;
@@ -532,6 +533,7 @@ class LabeledField extends StatelessWidget {
     required this.label,
     required this.value,
     this.hintText,
+    this.regexHint,
     this.enabled = true,
     this.controller,
     this.keyboardType,
@@ -541,32 +543,51 @@ class LabeledField extends StatelessWidget {
   });
 
   @override
+  State<LabeledField> createState() => _LabeledFieldState();
+}
+
+class _LabeledFieldState extends State<LabeledField> {
+  final focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label),
+        _FieldLabel(widget.label),
         const SizedBox(height: 7),
         TextFormField(
-          controller: controller,
-          initialValue: controller == null ? value : null,
-          enabled: enabled,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
+          focusNode: focusNode,
+          controller: widget.controller,
+          initialValue: widget.controller == null ? widget.value : null,
+          enabled: widget.enabled,
+          keyboardType: widget.keyboardType,
+          inputFormatters: widget.inputFormatters,
           validator:
-              validator ??
-              (enabled
+              widget.validator ??
+              (widget.enabled
                   ? (text) {
                       if ((text ?? '').trim().isEmpty) {
-                        return requiredMessage(label);
+                        return requiredMessage(widget.label);
                       }
                       return null;
                     }
                   : null),
           decoration: InputDecoration(
-            hintText: hintText ?? '$label 입력 규칙에 맞게 작성하세요.',
-            suffixText: suffixText,
+            hintText: widget.hintText ?? widget.label,
+            helperText: focusNode.hasFocus && widget.regexHint != null
+                ? widget.regexHint
+                : null,
+            suffix: widget.suffixText == null ? null : Text(widget.suffixText!),
           ),
+          onTap: () => setState(() {}),
+          onChanged: (_) => setState(() {}),
         ),
       ],
     );
@@ -597,7 +618,8 @@ class LabeledNumberField extends StatelessWidget {
       label: label,
       value: value,
       controller: controller,
-      hintText: hintText ?? '숫자만 입력하세요.',
+      hintText: hintText ?? label,
+      regexHint: '숫자만 입력',
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       validator:
@@ -652,9 +674,7 @@ class LabeledBox extends StatelessWidget {
                       return null;
                     }
                   : null),
-          decoration: InputDecoration(
-            hintText: hintText ?? '$label 내용을 입력하세요.',
-          ),
+          decoration: InputDecoration(hintText: hintText ?? label),
         ),
       ],
     );
@@ -689,6 +709,7 @@ class LabeledDropdown extends StatelessWidget {
           isExpanded: true,
           menuMaxHeight: kMinInteractiveDimension * 5,
           items: [
+            const DropdownMenuItem(value: '', child: Text('선택하세요.')),
             for (final item in items)
               DropdownMenuItem(value: item, child: Text(item)),
           ],
@@ -699,7 +720,7 @@ class LabeledDropdown extends StatelessWidget {
             }
             return null;
           },
-          decoration: InputDecoration(hintText: hintText ?? '$label을 선택하세요.'),
+          decoration: InputDecoration(hintText: hintText ?? label),
         ),
       ],
     );
@@ -1007,11 +1028,7 @@ class _Bar extends StatelessWidget {
             height: height,
             margin: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.green, AppColors.mint],
-              ),
+              color: AppColors.green,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(10),
               ),

@@ -11,12 +11,12 @@ class OwnerDetailPage extends StatefulWidget {
 
 class _OwnerDetailPageState extends State<OwnerDetailPage> {
   final formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController(text: '김하늘');
-  final phoneController = TextEditingController(text: '010-2222-3344');
-  final businessController = TextEditingController(text: '312-45-67890');
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final businessController = TextEditingController();
   String orderNotice = '즉시 알림';
   String returnNotice = '즉시 알림';
-  String shipmentNotice = '하루 1회 요약';
+  String shipmentNotice = '즉시 알림';
 
   @override
   void dispose() {
@@ -57,14 +57,16 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               label: '이름',
               value: '',
               controller: nameController,
-              hintText: '예: 김하늘',
+              hintText: '이름',
+              regexHint: '한글/영문 2-20자',
               validator: nameValidator,
             ),
             LabeledField(
               label: '전화번호',
               value: '',
               controller: phoneController,
-              hintText: '전화번호를 입력하세요.',
+              hintText: '전화번호',
+              regexHint: '010-0000-0000',
               keyboardType: TextInputType.number,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
@@ -76,7 +78,8 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               label: '사업자번호',
               value: '',
               controller: businessController,
-              hintText: '사업자번호를 입력하세요.',
+              hintText: '사업자번호',
+              regexHint: '000-00-00000',
               keyboardType: TextInputType.number,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,

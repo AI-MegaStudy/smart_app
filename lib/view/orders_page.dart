@@ -31,7 +31,7 @@ class _OrdersPageState extends State<OrdersPage> {
               .toLowerCase()
               .contains(query);
       return matchesFilter && matchesQuery;
-    }).toList();
+    }).toList()..sort((a, b) => a.time.compareTo(b.time));
 
     return Scaffold(
       body: AppScaffold(
@@ -95,22 +95,28 @@ class _OrdersPageState extends State<OrdersPage> {
 
 const sampleOrders = [
   OrderRecord(
-    '홍길동 · 후지 5kg',
-    '2박스 · 78,000원 · 10.12 수확분',
+    '홍길동 · 양광 5kg',
+    '2박스 · 78,000원 · 09:20',
     '결제 완료',
     AppColors.blue,
+    '09:20',
+    '78,000원',
   ),
   OrderRecord(
-    '김민지 · 홍로 3kg',
-    '1박스 · 32,000원 · 10.20 수확분',
+    '김민지 · 부사 3kg',
+    '1박스 · 32,000원 · 09:45',
     '예약',
     AppColors.yellow,
+    '09:45',
+    '32,000원',
   ),
   OrderRecord(
-    '박서준 · 시나노골드',
-    '1박스 · 68,000원 · 오늘 12:10',
+    '박서준 · 양광 7kg',
+    '1박스 · 68,000원 · 12:10',
     '결제 완료',
     AppColors.blue,
+    '12:10',
+    '68,000원',
   ),
 ];
 
@@ -119,6 +125,15 @@ class OrderRecord {
   final String subtitle;
   final String status;
   final Color color;
+  final String time;
+  final String amount;
 
-  const OrderRecord(this.title, this.subtitle, this.status, this.color);
+  const OrderRecord(
+    this.title,
+    this.subtitle,
+    this.status,
+    this.color,
+    this.time,
+    this.amount,
+  );
 }

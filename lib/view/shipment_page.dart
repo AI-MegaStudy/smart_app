@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_app/util/app_colors.dart';
+import 'package:smart_app/view/procurement_status_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class ShipmentPage extends StatefulWidget {
@@ -12,11 +13,11 @@ class ShipmentPage extends StatefulWidget {
 
 class _ShipmentPageState extends State<ShipmentPage> {
   final formKey = GlobalKey<FormState>();
-  final invoiceController = TextEditingController(text: '5891-1202-4810');
-  String selectedProduct = _ShipmentProduct.items.first.name;
-  String courier = 'CJ대한통운';
-  String boxes = _ShipmentProduct.items.first.boxes;
-  String weight = _ShipmentProduct.items.first.weight;
+  final invoiceController = TextEditingController();
+  String selectedProduct = '';
+  String courier = '';
+  String boxes = '';
+  String weight = '';
 
   @override
   void dispose() {
@@ -25,7 +26,7 @@ class _ShipmentPageState extends State<ShipmentPage> {
   }
 
   void _selectProduct(String value) {
-    final product = _ShipmentProduct.items.firstWhere(
+    final product = _ShipmentProduct.approvedItems.firstWhere(
       (item) => item.name == value,
     );
     setState(() {
@@ -76,7 +77,8 @@ class _ShipmentPageState extends State<ShipmentPage> {
               label: '발주 승인 상품',
               value: selectedProduct,
               items: [
-                for (final product in _ShipmentProduct.items) product.name,
+                for (final product in _ShipmentProduct.approvedItems)
+                  product.name,
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -98,12 +100,13 @@ class _ShipmentPageState extends State<ShipmentPage> {
               label: '송장번호',
               value: '',
               controller: invoiceController,
-              hintText: '송장번호를 입력하세요',
+              hintText: '송장번호',
               keyboardType: TextInputType.number,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
                 const DashTextInputFormatter([4, 4, 4]),
               ],
+              regexHint: '1234-1234-1234',
               validator: invoiceNumberValidator,
             ),
             LabeledDropdown(
@@ -141,9 +144,17 @@ class _ShipmentProduct {
 
   const _ShipmentProduct(this.name, this.boxes, this.weight);
 
-  static const items = [
-    _ShipmentProduct('홍길동 · 후지 5kg', '2박스', '10kg'),
-    _ShipmentProduct('김민지 · 홍로 3kg', '1박스', '3kg'),
-    _ShipmentProduct('박서준 · 시나노골드', '1박스', '8kg'),
-  ];
+  static List<_ShipmentProduct> get approvedItems {
+    final approved = procurementStatusRecords.where(
+      (record) => record.status == '승인 완료',
+    );
+    return [
+      for (final record in approved)
+        _ShipmentProduct(
+          record.subtitle.split(' · ').take(2).join(' · '),
+          '1박스',
+          '5kg',
+        ),
+    ];
+  }
 }

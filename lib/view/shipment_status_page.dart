@@ -16,13 +16,23 @@ class _ShipmentStatusPageState extends State<ShipmentStatusPage> {
 
   final shipments = const [
     _Shipment(
-      '홍길동 · 후지 5kg',
-      'CJ대한통운 · 5891-1202-4810',
+      '홍길동 · 양광 5kg',
+      'CJ대한통운 · 5891-1202-4810 · 2026-05-07 09:50',
       '배송 중',
       AppColors.mint,
     ),
-    _Shipment('김민지 · 홍로 3kg', '송장 입력 대기', '대기', AppColors.yellow),
-    _Shipment('박서준 · 시나노골드', '롯데택배 · 1234-1234-1234', '배송 완료', AppColors.blue),
+    _Shipment(
+      '김민지 · 부사 3kg',
+      '송장 입력 대기 · 2026-05-07 10:20',
+      '대기',
+      AppColors.yellow,
+    ),
+    _Shipment(
+      '박서준 · 양광 7kg',
+      '롯데택배 · 1234-1234-1234 · 2026-05-07 11:30',
+      '배송 완료',
+      AppColors.blue,
+    ),
   ];
 
   @override

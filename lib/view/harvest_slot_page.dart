@@ -11,10 +11,8 @@ class HarvestSlotPage extends StatefulWidget {
 
 class _HarvestSlotPageState extends State<HarvestSlotPage> {
   final formKey = GlobalKey<FormState>();
-  final openQuantityController = TextEditingController(text: '300');
-  final guideController = TextEditingController(
-    text: '수확 예정 범위는 기상과 생육 상황에 따라 조정될 수 있습니다.',
-  );
+  final openQuantityController = TextEditingController();
+  final guideController = TextEditingController();
 
   @override
   void dispose() {
@@ -30,7 +28,7 @@ class _HarvestSlotPageState extends State<HarvestSlotPage> {
         key: formKey,
         child: AppScaffold(
           title: '수확 예측 · 슬롯 확정',
-          subtitle: '후지 사과 5kg',
+          subtitle: '양광 사과 5kg',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
@@ -78,7 +76,7 @@ class _HarvestSlotPageState extends State<HarvestSlotPage> {
               value: '',
               controller: openQuantityController,
               suffixText: 'kg',
-              hintText: '숫자만 입력하세요. 예: 300',
+              hintText: '예약 오픈 수량',
               validator: (text) {
                 final base = numericValidator(text);
                 return base == null ? null : '예약 오픈 수량에는 숫자만 입력하세요.';
@@ -90,18 +88,9 @@ class _HarvestSlotPageState extends State<HarvestSlotPage> {
               controller: guideController,
             ),
             DualActionBar(
-              left: '임시 저장',
+              left: '취소',
               right: '예약 오픈',
-              onLeftPressed: () {
-                showConfirmAction(
-                  context: context,
-                  title: '수확 슬롯 임시 저장',
-                  message: '입력한 수확 슬롯 초안을 임시 저장할까요?',
-                  confirmLabel: '저장',
-                  onConfirm: () =>
-                      showOwnerSnack(context, '수확 슬롯 초안을 임시 저장했습니다.'),
-                );
-              },
+              onLeftPressed: () => Navigator.of(context).pop(),
               onRightPressed: () {
                 if (!(formKey.currentState?.validate() ?? false)) {
                   showOwnerSnack(context, '모든 항목을 입력해야 예약 오픈이 가능합니다.');

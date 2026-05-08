@@ -64,7 +64,7 @@ class _ReturnStatusPageState extends State<ReturnStatusPage> {
               ),
             ),
           FilterTabs(
-            labels: const ['전체', '확인 필요', '승인', '거절'],
+            labels: const ['전체', '승인', '거절'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
@@ -85,11 +85,16 @@ class _ReturnStatusPageState extends State<ReturnStatusPage> {
 final returnStatusRecords = <ReturnStatusRecord>[
   const ReturnStatusRecord(
     '부분 환불 완료',
-    '홍로 3kg · 12,000원',
+    '부사 3kg · 12,000원 · 2026-05-07 10:30',
     '승인',
     AppColors.mint,
   ),
-  const ReturnStatusRecord('단순 변심', '시나노골드 · 정책상 거절', '거절', AppColors.yellow),
+  const ReturnStatusRecord(
+    '단순 변심',
+    '양광 7kg · 정책상 거절 · 2026-05-07 11:10',
+    '거절',
+    AppColors.yellow,
+  ),
 ];
 
 class ReturnStatusRecord {

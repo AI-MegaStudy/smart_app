@@ -4,20 +4,35 @@ import 'package:smart_app/model/product_record.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
-class ProductAddPage extends StatefulWidget {
-  const ProductAddPage({super.key});
+class ProductEditPage extends StatefulWidget {
+  final ProductRecord product;
+
+  const ProductEditPage({super.key, required this.product});
 
   @override
-  State<ProductAddPage> createState() => _ProductAddPageState();
+  State<ProductEditPage> createState() => _ProductEditPageState();
 }
 
-class _ProductAddPageState extends State<ProductAddPage> {
+class _ProductEditPageState extends State<ProductEditPage> {
   final formKey = GlobalKey<FormState>();
   final packageController = TextEditingController();
   final priceController = TextEditingController();
   final stockController = TextEditingController();
-  String productName = '';
-  String status = '';
+  late String productName;
+  late String status;
+
+  @override
+  void initState() {
+    super.initState();
+    productName = widget.product.name;
+    packageController.text = widget.product.packageUnit.replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
+    priceController.text = widget.product.price.toString();
+    stockController.text = widget.product.stockKg.toString();
+    status = widget.product.status;
+  }
 
   @override
   void dispose() {
@@ -29,14 +44,14 @@ class _ProductAddPageState extends State<ProductAddPage> {
 
   void _save() {
     if (!(formKey.currentState?.validate() ?? false)) {
-      showOwnerSnack(context, '모든 항목을 입력한 뒤 등록하세요.');
+      showOwnerSnack(context, '모든 항목을 입력한 뒤 수정하세요.');
       return;
     }
     showConfirmAction(
       context: context,
-      title: '상품 등록',
-      message: '새 상품을 등록할까요?',
-      confirmLabel: '등록',
+      title: '상품 수정',
+      message: '상품 정보를 수정할까요?',
+      confirmLabel: '수정',
       onConfirm: () {
         final product = ProductRecord(
           productName,
@@ -46,7 +61,7 @@ class _ProductAddPageState extends State<ProductAddPage> {
           status,
           _statusColor(status),
         );
-        showOwnerSnack(context, '상품을 등록했습니다.');
+        showOwnerSnack(context, '상품 정보를 수정했습니다.');
         Navigator.of(context).pop(product);
       },
     );
@@ -66,8 +81,8 @@ class _ProductAddPageState extends State<ProductAddPage> {
       body: Form(
         key: formKey,
         child: AppScaffold(
-          title: '상품 추가',
-          subtitle: '고객에게 보이는 상품 정보',
+          title: '상품 수정',
+          subtitle: '상품 정보 수정',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
@@ -137,7 +152,7 @@ class _ProductAddPageState extends State<ProductAddPage> {
             ),
             DualActionBar(
               left: '취소',
-              right: '등록',
+              right: '수정',
               onLeftPressed: () => Navigator.of(context).pop(),
               onRightPressed: _save,
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_app/model/product_record.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/product_add_page.dart';
+import 'package:smart_app/view/product_edit_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class ProductPage extends StatefulWidget {
@@ -19,27 +20,9 @@ class _ProductPageState extends State<ProductPage> {
   final selectedProducts = <ProductRecord>{};
 
   final products = [
-    const ProductRecord(
-      '후지 사과',
-      '5kg 박스',
-      '39,000원 · 수확 슬롯 2개',
-      '판매 중',
-      AppColors.mint,
-    ),
-    const ProductRecord(
-      '홍로 사과',
-      '3kg 박스',
-      '32,000원 · 잔여 42kg',
-      '준비 중',
-      AppColors.yellow,
-    ),
-    const ProductRecord(
-      '시나노골드 사과',
-      '7kg 박스',
-      '68,000원 · 사고 재고 확인 필요',
-      '중지',
-      Color(0xffFFE1DD),
-    ),
+    const ProductRecord('양광 사과', '5kg 박스', 39000, 42, '판매 중', AppColors.mint),
+    const ProductRecord('부사 사과', '3kg 박스', 32000, 18, '준비 중', AppColors.yellow),
+    const ProductRecord('양광 사과', '7kg 박스', 68000, 12, '중지', Color(0xffFFE1DD)),
   ];
 
   @override
@@ -59,9 +42,7 @@ class _ProductPageState extends State<ProductPage> {
 
   Future<void> _openEdit(ProductRecord product) async {
     final updated = await Navigator.of(context).push<ProductRecord>(
-      MaterialPageRoute(
-        builder: (_) => ProductAddPage(initialProduct: product),
-      ),
+      MaterialPageRoute(builder: (_) => ProductEditPage(product: product)),
     );
     if (updated != null) {
       setState(() {
@@ -105,7 +86,7 @@ class _ProductPageState extends State<ProductPage> {
       final matchesFilter = filter == '전체' || product.status == filter;
       final matchesQuery =
           query.isEmpty ||
-          '${product.name} ${product.packageUnit} ${product.summary} ${product.status}'
+          '${product.name} ${product.packageUnit} ${product.priceLabel} ${product.stockKg} ${product.status}'
               .toLowerCase()
               .contains(query);
       return matchesFilter && matchesQuery;
@@ -164,8 +145,9 @@ class _ProductPageState extends State<ProductPage> {
           ),
           for (final product in visible)
             deleteMode
-                ? CheckboxListTile(
-                    value: selectedProducts.contains(product),
+                ? _ProductDeleteTile(
+                    product: product,
+                    selected: selectedProducts.contains(product),
                     onChanged: (checked) {
                       setState(() {
                         if (checked == true) {
@@ -175,34 +157,160 @@ class _ProductPageState extends State<ProductPage> {
                         }
                       });
                     },
-                    title: Text(
-                      '${product.name} · ${product.packageUnit}',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    subtitle: Text(product.summary),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    tileColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: AppColors.line),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
                   )
-                : DataTile(
-                    icon: Icons.local_florist,
-                    title: '${product.name} · ${product.packageUnit}',
-                    subtitle: product.summary,
-                    badge: product.status,
-                    badgeColor: product.color,
+                : _ProductTile(
+                    product: product,
                     onTap: () => _openEdit(product),
                   ),
+          if (deleteMode)
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      if (selectedProducts.length == visible.length) {
+                        selectedProducts.clear();
+                      } else {
+                        selectedProducts
+                          ..clear()
+                          ..addAll(visible);
+                      }
+                    });
+                  },
+                  child: const Text('전체 선택'),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _toggleDeleteMode,
+                  child: const Text('삭제'),
+                ),
+              ],
+            ),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _toggleDeleteMode,
+              onPressed: deleteMode
+                  ? () => setState(() {
+                      deleteMode = false;
+                      selectedProducts.clear();
+                    })
+                  : _toggleDeleteMode,
               child: Text(deleteMode ? '완료' : '삭제'),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProductTile extends StatelessWidget {
+  final ProductRecord product;
+  final VoidCallback onTap;
+
+  const _ProductTile({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final stockStyle = TextStyle(
+      color: product.stockKg < 20 ? Colors.red : AppColors.muted,
+      fontWeight: FontWeight.w800,
+    );
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.local_florist, color: AppColors.green),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${product.name} · ${product.packageUnit}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        children: [
+                          TextSpan(text: '${product.priceLabel} · '),
+                          TextSpan(
+                            text: '잔여 ${product.stockKg}kg',
+                            style: stockStyle,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              StatusBadge(text: product.status, color: product.color),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductDeleteTile extends StatelessWidget {
+  final ProductRecord product;
+  final bool selected;
+  final ValueChanged<bool?> onChanged;
+
+  const _ProductDeleteTile({
+    required this.product,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CheckboxListTile(
+      value: selected,
+      onChanged: onChanged,
+      title: Text(
+        '${product.name} · ${product.packageUnit}',
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      subtitle: Text('${product.priceLabel} · 잔여 ${product.stockKg}kg'),
+      controlAffinity: ListTileControlAffinity.leading,
+      tileColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }

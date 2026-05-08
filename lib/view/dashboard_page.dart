@@ -88,7 +88,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         DataTile(
           icon: Icons.local_florist,
-          title: '후지 5kg 발주 승인',
+          title: '양광 5kg 발주 승인',
           subtitle: '홍길동 고객 · 2박스',
           badge: '대기',
           badgeColor: AppColors.yellow,

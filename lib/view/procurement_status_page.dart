@@ -64,7 +64,7 @@ class _ProcurementStatusPageState extends State<ProcurementStatusPage> {
               ),
             ),
           FilterTabs(
-            labels: const ['전체', '승인 대기', '승인 완료', '거절'],
+            labels: const ['전체', '승인 완료', '거절'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
@@ -84,14 +84,14 @@ class _ProcurementStatusPageState extends State<ProcurementStatusPage> {
 
 final procurementStatusRecords = <ProcurementStatusRecord>[
   const ProcurementStatusRecord(
-    '발주 2026-1011-09',
-    '박서준 · 부사 3kg 1박스',
+    '2026-05-07 10:10',
+    '박서준 · 부사 3kg 1박스 · 68,000원',
     '승인 완료',
     AppColors.mint,
   ),
   const ProcurementStatusRecord(
-    '발주 2026-1010-02',
-    '김민지 · 재고 부족으로 거절',
+    '2026-05-07 10:20',
+    '김민지 · 양광 5kg 1박스 · 재고 부족',
     '거절',
     Color(0xffFFE1DD),
   ),
