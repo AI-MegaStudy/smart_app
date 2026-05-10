@@ -36,7 +36,6 @@ class _ReturnStatusPageState extends State<ReturnStatusPage> {
     return Scaffold(
       body: AppScaffold(
         title: '반품 · 환불 현황',
-        subtitle: '요청 처리 상태',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
@@ -70,11 +69,13 @@ class _ReturnStatusPageState extends State<ReturnStatusPage> {
           ),
           for (final item in visible)
             DataTile(
-              icon: Icons.keyboard_return_outlined,
+              icon: Icons.assignment_return_outlined,
               title: item.title,
               subtitle: item.subtitle,
               badge: item.status,
               badgeColor: item.color,
+              iconBackground: AppColors.mint,
+              iconColor: AppColors.green,
             ),
         ],
       ),
@@ -84,14 +85,14 @@ class _ReturnStatusPageState extends State<ReturnStatusPage> {
 
 final returnStatusRecords = <ReturnStatusRecord>[
   const ReturnStatusRecord(
-    '부분 환불 완료',
-    '부사 3kg · 12,000원 · 2026-05-07 10:30',
+    '2026-05-07 10:30',
+    '김민지 · 부사 사과 3kg · 1박스 · 12,000원',
     '승인',
     AppColors.mint,
   ),
   const ReturnStatusRecord(
-    '단순 변심',
-    '양광 7kg · 정책상 거절 · 2026-05-07 11:10',
+    '2026-05-07 11:10',
+    '박서준 · 양광 사과 7kg · 1박스 · 정책상 거절',
     '거절',
     AppColors.yellow,
   ),

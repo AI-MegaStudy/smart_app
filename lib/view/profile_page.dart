@@ -23,7 +23,7 @@ class ProfilePage extends StatelessWidget {
         ProfileListTile(
           icon: Icons.person_outline,
           title: '내 정보 수정',
-          subtitle: '이름, 이메일, 비밀번호, 전화번호, 사업자번호, 알림',
+          subtitle: '이름, 이메일, 비밀번호, 전화번호, 사업자번호',
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const OwnerDetailPage())),
@@ -31,11 +31,12 @@ class ProfilePage extends StatelessWidget {
         ProfileListTile(
           icon: Icons.warehouse_outlined,
           title: '농장 정보 수정',
-          subtitle: '농장 소개, 주소, 배송 정책, 반품 정책',
+          subtitle: '농장명, 주소, 농장 소개, 배송 정책, 반품 정책',
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const FarmDetailPage())),
         ),
+        const SizedBox(height: 12),
         PrimaryAction(
           label: '로그아웃',
           onPressed: () {
@@ -65,7 +66,7 @@ class ProfilePage extends StatelessWidget {
               onConfirm: () => showInfoAction(
                 context: context,
                 title: '회원 탈퇴',
-                message: '회원 탈퇴 요청이 접수되었습니다.',
+                message: '회원 탈퇴가 완료되었습니다.',
                 onConfirm: () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginPage()),

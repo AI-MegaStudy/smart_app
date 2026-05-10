@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/return_status_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
@@ -16,10 +15,38 @@ class _ReturnPageState extends State<ReturnPage> {
   bool showSearch = false;
 
   final requests = [
-    _ReturnRequest('배송 중 파손', '양광 사과 5kg · 2026-05-07 09:30', '접수', 2),
-    _ReturnRequest('상품 멍 확인', '부사 사과 3kg · 2026-05-07 10:10', '접수', 1),
-    _ReturnRequest('수량 오배송', '양광 사과 7kg · 2026-05-07 11:40', '접수', 0),
-  ].where((request) => !_handledReturnTitles.contains(request.title)).toList();
+    const _ReturnRequest(
+      '홍길동',
+      '배송 중 박스 파손',
+      '양광 사과 5kg · 2박스',
+      '2026-05-07 09:30',
+      '39000',
+      '배송 중 박스 파손으로 상품이 눌렸습니다.',
+      '접수',
+      2,
+    ),
+    const _ReturnRequest(
+      '김민지',
+      '상품 멍 확인',
+      '부사 사과 3kg · 1박스',
+      '2026-05-07 10:10',
+      '32000',
+      '수령 직후 멍이 보여 반품을 요청합니다.',
+      '접수',
+      1,
+    ),
+    const _ReturnRequest(
+      '박서준',
+      '수량 오배송',
+      '양광 사과 7kg · 1박스',
+      '2026-05-07 11:40',
+      '68000',
+      '주문한 박스 수와 배송된 박스 수가 다릅니다.',
+      '접수',
+      0,
+    ),
+  ].where((request) => !_handledReturnIds.contains(request.id)).toList()
+    ..sort((a, b) => a.requestedAt.compareTo(b.requestedAt));
 
   @override
   void dispose() {
@@ -38,7 +65,6 @@ class _ReturnPageState extends State<ReturnPage> {
     return Scaffold(
       body: AppScaffold(
         title: '반품 · 환불 관리',
-        subtitle: '고객 요청 목록',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
@@ -77,7 +103,7 @@ class _ReturnPageState extends State<ReturnPage> {
                 if (handled == true) {
                   setState(() {
                     requests.remove(request);
-                    _handledReturnTitles.add(request.title);
+                    _handledReturnIds.add(request.id);
                   });
                 }
               },
@@ -88,7 +114,7 @@ class _ReturnPageState extends State<ReturnPage> {
   }
 }
 
-final _handledReturnTitles = <String>{};
+final _handledReturnIds = <String>{};
 
 class _ReturnRequestTile extends StatelessWidget {
   final _ReturnRequest request;
@@ -98,61 +124,16 @@ class _ReturnRequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.line),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xffFFE1DD),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.keyboard_return,
-                  color: AppColors.green,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      request.title,
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      request.subtitle,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.muted),
-            ],
-          ),
-        ),
-      ),
+    return DataTile(
+      icon: Icons.keyboard_return,
+      title: request.title,
+      subtitle: request.subtitle,
+      badge: request.status,
+      badgeColor: AppColors.mint,
+      iconBackground: AppColors.mint,
+      iconColor: AppColors.green,
+      onTap: onTap,
+      showChevron: true,
     );
   }
 }
@@ -168,8 +149,15 @@ class _ReturnDetailPage extends StatefulWidget {
 
 class _ReturnDetailPageState extends State<_ReturnDetailPage> {
   final formKey = GlobalKey<FormState>();
-  final detailController = TextEditingController();
-  final approvalAmountController = TextEditingController();
+  late final TextEditingController detailController;
+  late final TextEditingController approvalAmountController;
+
+  @override
+  void initState() {
+    super.initState();
+    detailController = TextEditingController(text: widget.request.detailReason);
+    approvalAmountController = TextEditingController(text: widget.request.amount);
+  }
 
   @override
   void dispose() {
@@ -186,13 +174,13 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
     showConfirmAction(
       context: context,
       title: '반품 요청 승인',
-      message: '반품 · 환불 상태를 환불 승인 처리할까요?',
-      confirmLabel: '환불 승인',
+      message: '반품 · 환불 상태를 승인 처리할까요?',
+      confirmLabel: '승인',
       onConfirm: () {
         returnStatusRecords.add(
           ReturnStatusRecord(
-            widget.request.title,
-            '${widget.request.subtitle} · ${approvalAmountController.text}원',
+            widget.request.requestedAt,
+            '${widget.request.customerName} · ${widget.request.productName} · ${approvalAmountController.text}원',
             '승인',
             AppColors.mint,
           ),
@@ -262,8 +250,8 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
     if (confirmed == true && context.mounted) {
       returnStatusRecords.add(
         ReturnStatusRecord(
-          widget.request.title,
-          '${widget.request.subtitle} · $reason',
+          widget.request.requestedAt,
+          '${widget.request.customerName} · ${widget.request.productName} · $reason',
           '거절',
           AppColors.yellow,
         ),
@@ -280,7 +268,6 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
         key: formKey,
         child: AppScaffold(
           title: '반품 · 환불 상세',
-          subtitle: '요청 확인과 결정',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
@@ -292,22 +279,24 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
               subtitle: widget.request.subtitle,
               badge: widget.request.status,
               badgeColor: const Color(0xffFFE1DD),
+              iconBackground: const Color(0xffFFE1DD),
+              iconColor: const Color(0xffB64033),
             ),
-            const LabeledField(
+            LabeledField(
               label: '구매 상품 금액',
-              value: '39,000원',
+              value: '${widget.request.amount}원',
               enabled: false,
             ),
-            const LabeledField(
+            LabeledField(
               label: '고객 요청 사유',
-              value: '배송 중 박스 파손',
+              value: widget.request.reason,
               enabled: false,
             ),
             LabeledBox(
               label: '상세 사유',
-              value: '',
+              value: widget.request.detailReason,
               controller: detailController,
-              hintText: '상세 사유',
+              enabled: false,
             ),
             if (widget.request.photoCount > 0)
               _CustomerImagePreview(count: widget.request.photoCount),
@@ -317,17 +306,19 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
               controller: approvalAmountController,
               hintText: '승인 금액',
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              regexHint: '숫자만 입력',
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
-                final base = numericValidator(text);
-                return base == null ? null : '승인 금액에는 숫자만 입력하세요.';
+                final required = requiredValidator('승인 금액', text);
+                if (required != null) return required;
+                return RegExp(r'^\d+$').hasMatch(text!.trim())
+                    ? null
+                    : '승인 금액에는 숫자만 입력하세요.';
               },
               suffixText: '원',
             ),
             DualActionBar(
               left: '거절',
-              right: '환불 승인',
+              right: '승인',
               onLeftPressed: () => _confirmReject(context),
               onRightPressed: () => _confirmApprove(context),
             ),
@@ -372,10 +363,27 @@ class _CustomerImagePreview extends StatelessWidget {
 }
 
 class _ReturnRequest {
-  final String title;
-  final String subtitle;
+  final String customerName;
+  final String reason;
+  final String productName;
+  final String requestedAt;
+  final String amount;
+  final String detailReason;
   final String status;
   final int photoCount;
 
-  const _ReturnRequest(this.title, this.subtitle, this.status, this.photoCount);
+  const _ReturnRequest(
+    this.customerName,
+    this.reason,
+    this.productName,
+    this.requestedAt,
+    this.amount,
+    this.detailReason,
+    this.status,
+    this.photoCount,
+  );
+
+  String get id => '$customerName-$requestedAt';
+  String get title => '$customerName · $reason';
+  String get subtitle => '$productName · $requestedAt';
 }

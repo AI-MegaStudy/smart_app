@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:kpostal_plus/kpostal_plus.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
@@ -22,12 +21,10 @@ class _SignupPageState extends State<SignupPage> {
   final businessController = TextEditingController();
   final farmController = TextEditingController();
   final addressController = TextEditingController();
+  final emailFocusNode = FocusNode();
 
-  String emailDomain = '';
   bool emailChecked = false;
-  String? emailRowError;
 
-  static const emailDomains = ['gmail.com', 'naver.com', 'daum.net'];
   static const fallbackAddresses = [
     '충북 충주시 산척면 과수원길 24',
     '충북 충주시 주덕읍 냇내로 18',
@@ -44,20 +41,23 @@ class _SignupPageState extends State<SignupPage> {
     businessController.dispose();
     farmController.dispose();
     addressController.dispose();
+    emailFocusNode.dispose();
     super.dispose();
   }
 
-  String get fullEmail => '${emailLocalController.text.trim()}@$emailDomain';
+  String get fullEmail => emailLocalController.text.trim();
 
   void _checkEmail() {
-    if (emailLocalController.text.trim().isEmpty || emailDomain.isEmpty) {
-      setState(() => emailRowError = '이메일을 입력하세요.');
+    final missingLocal = emailLocalController.text.trim().isEmpty;
+    final invalidEmail = emailValidator(emailLocalController.text) != null;
+    if (missingLocal || invalidEmail) {
+      formKey.currentState?.validate();
+      emailFocusNode.requestFocus();
       return;
     }
     final used = fullEmail == 'owner@harvestslot.kr';
     setState(() {
       emailChecked = !used;
-      emailRowError = null;
     });
     showInfoAction(
       context: context,
@@ -110,17 +110,20 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   void _submit() {
-    final missingEmail =
-        emailLocalController.text.trim().isEmpty || emailDomain.isEmpty;
-    setState(() {
-      emailRowError = missingEmail ? '이메일을 입력하세요.' : null;
-    });
+    final missingEmail = emailLocalController.text.trim().isEmpty;
     final valid = formKey.currentState?.validate() ?? false;
     if (!valid || missingEmail) {
+      if (emailLocalController.text.trim().isEmpty) {
+        emailFocusNode.requestFocus();
+      }
       return;
     }
     if (!emailChecked) {
-      showOwnerSnack(context, '이메일 중복 확인을 진행하세요.');
+      showInfoAction(
+        context: context,
+        title: '이메일 중복 확인',
+        message: '이메일 중복 확인을 진행하세요.',
+      );
       return;
     }
     showConfirmAction(
@@ -131,7 +134,7 @@ class _SignupPageState extends State<SignupPage> {
       onConfirm: () => showInfoAction(
         context: context,
         title: '회원가입',
-        message: '회원가입 요청이 완료되었습니다.',
+        message: '회원가입이 완료되었습니다.',
         onConfirm: () => Navigator.of(context).pop(),
       ),
     );
@@ -168,74 +171,30 @@ class _SignupPageState extends State<SignupPage> {
                         label: '이메일',
                         value: '',
                         controller: emailLocalController,
+                        focusNode: emailFocusNode,
                         hintText: '이메일',
-                        validator: (_) => null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 20),
-                        child: DropdownButtonFormField<String>(
-                          initialValue: emailDomain.isEmpty
-                              ? null
-                              : emailDomain,
-                          isExpanded: true,
-                          alignment: AlignmentDirectional.centerStart,
-                          menuMaxHeight: kMinInteractiveDimension * 5,
-                          hint: const Text('선택하세요.'),
-                          decoration: const InputDecoration(hintText: '선택하세요.'),
-                          items: [
-                            const DropdownMenuItem(
-                              value: '',
-                              alignment: Alignment.centerLeft,
-                              child: Text('선택하세요.'),
-                            ),
-                            for (final domain in emailDomains)
-                              DropdownMenuItem(
-                                value: domain,
-                                alignment: Alignment.centerLeft,
-                                child: Text(domain),
-                              ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              emailDomain = value ?? '';
-                              emailChecked = false;
-                              emailRowError = null;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 20),
-                      child: SizedBox(
-                        width: 112,
-                        height: 56,
-                        child: FilledButton(
-                          onPressed: _checkEmail,
-                          child: const Text(
-                            '중복 확인',
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: emailValidator,
+                        onChanged: (_) {
+                          setState(() => emailChecked = false);
+                        },
                       ),
                     ),
                   ],
                 ),
-                if (emailRowError != null) ...[
-                  const SizedBox(height: 7),
-                  Text(
-                    emailRowError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.tonal(
+                    onPressed: _checkEmail,
+                    child: const Text(
+                      '이메일 중복 확인',
+                      maxLines: 1,
+                      softWrap: false,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
             LabeledField(
@@ -268,7 +227,7 @@ class _SignupPageState extends State<SignupPage> {
               hintText: '전화번호',
               keyboardType: TextInputType.number,
               maxLength: 11,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: phoneValidator,
             ),
             LabeledField(
@@ -278,10 +237,10 @@ class _SignupPageState extends State<SignupPage> {
               hintText: '사업자번호',
               keyboardType: TextInputType.number,
               maxLength: 10,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: businessValidator,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             const SectionHeader(title: '농장 정보'),
             LabeledField(
               label: '농장명',
@@ -302,7 +261,6 @@ class _SignupPageState extends State<SignupPage> {
               icon: const Icon(Icons.search),
               label: const Text('주소 검색'),
             ),
-            const SizedBox(height: 12),
             DualActionBar(
               left: '취소',
               right: '회원가입',

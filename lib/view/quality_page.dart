@@ -108,7 +108,6 @@ class _QualityPageState extends State<QualityPage> {
     return Scaffold(
       body: AppScaffold(
         title: '신선도 검사',
-        subtitle: '양광 사과 5kg',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
