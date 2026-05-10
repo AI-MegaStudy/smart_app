@@ -16,7 +16,6 @@ class _LoginPageState extends State<LoginPage> {
   final formKey = GlobalKey<FormState>();
   final emailController = TextEditingController(text: 'owner@harvestslot.kr');
   final passwordController = TextEditingController(text: 'owner1234');
-  bool rememberId = false;
   String? loginError;
 
   @override
@@ -113,33 +112,6 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: '비밀번호',
                             counterText: '',
                             prefixIcon: Icon(Icons.lock_outline),
-                          ),
-                        ),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            checkboxTheme: CheckboxThemeData(
-                              fillColor: WidgetStateProperty.resolveWith(
-                                (states) =>
-                                    states.contains(WidgetState.selected)
-                                    ? Colors.white
-                                    : Colors.transparent,
-                              ),
-                              checkColor: const WidgetStatePropertyAll(
-                                Color(0xff215C42),
-                              ),
-                              side: const BorderSide(
-                                color: Colors.white,
-                                width: 1.4,
-                              ),
-                            ),
-                          ),
-                          child: CheckboxListTile(
-                            value: rememberId,
-                            onChanged: (value) =>
-                                setState(() => rememberId = value ?? false),
-                            title: const Text('아이디 저장', style: whiteText),
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
                           ),
                         ),
                         const SizedBox(height: 28),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class OwnerDetailPage extends StatefulWidget {
@@ -17,9 +16,6 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
   final passwordConfirmController = TextEditingController(text: 'owner1234');
   final phoneController = TextEditingController(text: '1022223344');
   final businessController = TextEditingController(text: '3124567890');
-  String orderNotice = '즉시 알림';
-  String returnNotice = '즉시 알림';
-  String shipmentNotice = '즉시 알림';
 
   @override
   void dispose() {
@@ -37,9 +33,14 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
     showConfirmAction(
       context: context,
       title: '내 정보 저장',
-      message: '입력한 내 정보로 갱신할까요?',
+      message: '입력한 내 정보로 저장할까요?',
       confirmLabel: '확인',
-      onConfirm: () => showOwnerSnack(context, '내 정보가 저장되었습니다.'),
+      onConfirm: () => showInfoAction(
+        context: context,
+        title: '내 정보 저장',
+        message: '저장이 완료되었습니다.',
+        onConfirm: () => Navigator.of(context).pop(),
+      ),
     );
   }
 
@@ -100,7 +101,7 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               hintText: '전화번호',
               keyboardType: TextInputType.number,
               maxLength: 11,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: phoneValidator,
             ),
             LabeledField(
@@ -110,23 +111,8 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               hintText: '사업자번호',
               keyboardType: TextInputType.number,
               maxLength: 10,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: businessValidator,
-            ),
-            NoticeRadioGroup(
-              title: '발주 알림',
-              value: orderNotice,
-              onChanged: (v) => setState(() => orderNotice = v),
-            ),
-            NoticeRadioGroup(
-              title: '반품 알림',
-              value: returnNotice,
-              onChanged: (v) => setState(() => returnNotice = v),
-            ),
-            NoticeRadioGroup(
-              title: '배송 알림',
-              value: shipmentNotice,
-              onChanged: (v) => setState(() => shipmentNotice = v),
             ),
             DualActionBar(
               left: '취소',
@@ -137,47 +123,6 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class NoticeRadioGroup extends StatelessWidget {
-  final String title;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  const NoticeRadioGroup({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const options = ['즉시 알림', '하루 1회 요약', '알림 끄기'];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-        RadioGroup<String>(
-          groupValue: value,
-          onChanged: (next) {
-            if (next != null) onChanged(next);
-          },
-          child: Column(
-            children: [
-              for (final option in options)
-                RadioListTile<String>(
-                  value: option,
-                  title: Text(option),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -39,8 +39,13 @@ class _FarmDetailPageState extends State<FarmDetailPage> {
     showConfirmAction(
       context: context,
       title: '농장 정보 저장',
-      message: '입력한 농장 정보로 갱신할까요?',
-      onConfirm: () => showOwnerSnack(context, '농장 정보가 저장되었습니다.'),
+      message: '입력한 농장 정보로 저장할까요?',
+      onConfirm: () => showInfoAction(
+        context: context,
+        title: '농장 정보 저장',
+        message: '저장이 완료되었습니다.',
+        onConfirm: () => Navigator.of(context).pop(),
+      ),
     );
   }
 
@@ -123,18 +128,21 @@ class _FarmDetailPageState extends State<FarmDetailPage> {
               value: '',
               controller: introController,
               required: false,
+              showCounter: true,
             ),
             LabeledBox(
               label: '배송 정책',
               value: '',
               controller: shippingPolicyController,
               required: false,
+              showCounter: true,
             ),
             LabeledBox(
               label: '반품 정책',
               value: '',
               controller: returnPolicyController,
               required: false,
+              showCounter: true,
             ),
             DualActionBar(
               left: '취소',

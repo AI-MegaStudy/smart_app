@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class EmailFindPage extends StatefulWidget {
@@ -56,7 +55,7 @@ class _EmailFindPageState extends State<EmailFindPage> {
               hintText: '전화번호',
               keyboardType: TextInputType.number,
               maxLength: 11,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: phoneValidator,
             ),
             DualActionBar(

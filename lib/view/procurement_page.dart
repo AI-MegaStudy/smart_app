@@ -70,7 +70,7 @@ class _ProcurementPageState extends State<ProcurementPage> {
       title: '발주 승인',
       message: '선택한 ${selectedIds.length}건을 승인 처리할까요?',
       confirmLabel: '승인',
-      onConfirm: () => _applyDecision('승인 완료'),
+      onConfirm: () => _applyDecision('승인'),
     );
   }
 
@@ -142,10 +142,10 @@ class _ProcurementPageState extends State<ProcurementPage> {
         ProcurementStatusRecord(
           '2026-05-08 ${item.time}',
           reason == null
-              ? '${item.title} · ${item.amount}'
-              : '${item.title} · $reason',
+              ? '${item.title} · ${_withoutDateTime(item.subtitle)}'
+              : '${item.title} · ${_boxCount(item.subtitle)} · $reason',
           status,
-          status == '승인 완료' ? AppColors.mint : const Color(0xffFFE1DD),
+          status == '승인' ? AppColors.mint : const Color(0xffFFE1DD),
         ),
     ]);
     setState(() {
@@ -169,7 +169,6 @@ class _ProcurementPageState extends State<ProcurementPage> {
     return Scaffold(
       body: AppScaffold(
         title: '발주 승인',
-        subtitle: '예약 · 주문 현황 기반 승인',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
@@ -196,16 +195,6 @@ class _ProcurementPageState extends State<ProcurementPage> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
-          CheckboxListTile(
-            value: allSelected,
-            onChanged: _toggleAll,
-            title: const Text(
-              '전체 선택',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
           for (final request in visible)
             _ApprovalTile(
               request: request,
@@ -220,6 +209,13 @@ class _ProcurementPageState extends State<ProcurementPage> {
                 });
               },
             ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => _toggleAll(!allSelected),
+              child: Text(allSelected ? '전체 선택 해제' : '전체 선택'),
+            ),
+          ),
           DualActionBar(
             left: '거절',
             right: '승인',
@@ -230,6 +226,14 @@ class _ProcurementPageState extends State<ProcurementPage> {
       ),
     );
   }
+}
+
+String _withoutDateTime(String text) {
+  return text.replaceAll(RegExp(r' · \d{4}-\d{2}-\d{2} \d{2}:\d{2}$'), '');
+}
+
+String _boxCount(String text) {
+  return RegExp(r'\d+박스').firstMatch(text)?.group(0) ?? '1박스';
 }
 
 final _handledProcurementIds = <String>{};

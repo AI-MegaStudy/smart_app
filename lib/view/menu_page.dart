@@ -35,32 +35,9 @@ class _MenuPageState extends State<MenuPage> {
         ),
         MenuEntry(
           icon: Icons.auto_graph_outlined,
-          title: '수확 예측 · 슬롯 확정',
-          subtitle: 'ML 예측 확인 후 고객 예약 슬롯 확정',
+          title: '수확 예측',
+          subtitle: 'ML 예측 확인 후 주문 가능 수량 확인',
           page: HarvestSlotPage(),
-        ),
-      ],
-    ),
-    MenuSectionData(
-      title: '주문 처리',
-      items: [
-        MenuEntry(
-          icon: Icons.receipt_long_outlined,
-          title: '예약 · 주문 현황',
-          subtitle: '고객 예약과 주문 상태 확인',
-          page: OrdersPage(),
-        ),
-        MenuEntry(
-          icon: Icons.inventory_2_outlined,
-          title: '발주 승인',
-          subtitle: '예약 주문 선택 후 승인 또는 거절',
-          page: ProcurementPage(),
-        ),
-        MenuEntry(
-          icon: Icons.fact_check_outlined,
-          title: '발주 현황',
-          subtitle: '발주 승인 상태 확인',
-          page: ProcurementStatusPage(),
         ),
         MenuEntry(
           icon: Icons.center_focus_strong_outlined,
@@ -71,7 +48,30 @@ class _MenuPageState extends State<MenuPage> {
       ],
     ),
     MenuSectionData(
-      title: '배송 · 반품',
+      title: '주문 처리',
+      items: [
+        MenuEntry(
+          icon: Icons.receipt_long_outlined,
+          title: '주문 현황',
+          subtitle: '고객 주문 완료와 결제 상태 확인',
+          page: OrdersPage(),
+        ),
+        MenuEntry(
+          icon: Icons.inventory_2_outlined,
+          title: '발주 승인',
+          subtitle: '주문 완료 건 선택 후 승인 또는 거절',
+          page: ProcurementPage(),
+        ),
+        MenuEntry(
+          icon: Icons.fact_check_outlined,
+          title: '발주 현황',
+          subtitle: '발주 승인 상태 확인',
+          page: ProcurementStatusPage(),
+        ),
+      ],
+    ),
+    MenuSectionData(
+      title: '배송 관리',
       items: [
         MenuEntry(
           icon: Icons.local_shipping_outlined,
@@ -85,6 +85,11 @@ class _MenuPageState extends State<MenuPage> {
           subtitle: '송장과 발송 상태 확인',
           page: ShipmentStatusPage(),
         ),
+      ],
+    ),
+    MenuSectionData(
+      title: '반품 관리',
+      items: [
         MenuEntry(
           icon: Icons.keyboard_return_outlined,
           title: '반품 · 환불 관리',
@@ -147,10 +152,6 @@ class _MenuPageState extends State<MenuPage> {
             hintText: '메뉴명을 검색하세요',
             onChanged: (_) => setState(() {}),
           ),
-        const NoticeBox(
-          color: AppColors.blue,
-          text: '문서와 목업 기준의 점주 업무 화면입니다. 필요한 업무를 선택해 상세 화면으로 이동하세요.',
-        ),
         for (final section in visibleSections)
           MenuSection(title: section.title, items: section.items),
         if (visibleSections.isEmpty)

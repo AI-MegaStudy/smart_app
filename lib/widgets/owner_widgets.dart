@@ -418,6 +418,7 @@ class DataTile extends StatelessWidget {
   final Color iconBackground;
   final Color iconColor;
   final TextStyle? subtitleStyle;
+  final bool showChevron;
 
   const DataTile({
     super.key,
@@ -430,6 +431,7 @@ class DataTile extends StatelessWidget {
     this.iconBackground = AppColors.mint,
     this.iconColor = AppColors.green,
     this.subtitleStyle,
+    this.showChevron = false,
   });
 
   @override
@@ -488,6 +490,10 @@ class DataTile extends StatelessWidget {
               if (badge.isNotEmpty) ...[
                 const SizedBox(width: 10),
                 StatusBadge(text: badge, color: badgeColor),
+              ],
+              if (showChevron) ...[
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, color: iconColor),
               ],
             ],
           ),
@@ -571,6 +577,9 @@ class LabeledField extends StatefulWidget {
   final int maxLength;
   final bool obscureText;
   final bool readOnly;
+  final ValueChanged<String>? onChanged;
+  final FocusNode? focusNode;
+  final String? errorText;
 
   const LabeledField({
     super.key,
@@ -588,6 +597,9 @@ class LabeledField extends StatefulWidget {
     this.maxLength = 20,
     this.obscureText = false,
     this.readOnly = false,
+    this.onChanged,
+    this.focusNode,
+    this.errorText,
   });
 
   @override
@@ -595,23 +607,35 @@ class LabeledField extends StatefulWidget {
 }
 
 class _LabeledFieldState extends State<LabeledField> {
-  final focusNode = FocusNode();
+  late final FocusNode focusNode;
+  late final bool ownsFocusNode;
+  late final VoidCallback focusListener;
 
   @override
   void initState() {
     super.initState();
-    focusNode.addListener(() => setState(() {}));
+    ownsFocusNode = widget.focusNode == null;
+    focusNode = widget.focusNode ?? FocusNode();
+    focusListener = () => setState(() {});
+    focusNode.addListener(focusListener);
   }
 
   @override
   void dispose() {
-    focusNode.dispose();
+    focusNode.removeListener(focusListener);
+    if (ownsFocusNode) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final inactive = !widget.enabled || widget.readOnly;
+    final textColor = !widget.enabled
+        ? AppColors.muted
+        : widget.readOnly
+        ? AppColors.muted.withValues(alpha: 0.55)
+        : AppColors.text;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -623,11 +647,13 @@ class _LabeledFieldState extends State<LabeledField> {
           initialValue: widget.controller == null ? widget.value : null,
           enabled: widget.enabled,
           readOnly: widget.readOnly,
-          style: TextStyle(color: inactive ? AppColors.muted : AppColors.text),
+          style: TextStyle(color: textColor),
           obscureText: widget.obscureText,
           keyboardType: widget.keyboardType,
+          onChanged: widget.onChanged,
           inputFormatters: widget.inputFormatters,
           maxLength: widget.maxLength,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator:
               widget.validator ??
               (widget.enabled
@@ -635,9 +661,13 @@ class _LabeledFieldState extends State<LabeledField> {
                   : null),
           decoration: InputDecoration(
             hintText: widget.hintText ?? widget.label,
+            hintStyle: TextStyle(
+              color: AppColors.muted.withValues(alpha: 0.55),
+            ),
             helperText: focusNode.hasFocus
                 ? widget.helperText ?? widget.regexHint
                 : null,
+            errorText: widget.errorText,
             suffix: widget.suffixText == null ? null : Text(widget.suffixText!),
             counterText: '',
           ),
@@ -674,7 +704,7 @@ class LabeledNumberField extends StatelessWidget {
       hintText: hintText ?? label,
       regexHint: '숫자만 입력',
       keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      inputFormatters: const [DigitsOnlyInputFormatter()],
       validator:
           validator ??
           (text) {
@@ -694,6 +724,8 @@ class LabeledBox extends StatelessWidget {
   final TextEditingController? controller;
   final FormFieldValidator<String>? validator;
   final bool required;
+  final int maxLength;
+  final bool showCounter;
 
   const LabeledBox({
     super.key,
@@ -704,6 +736,8 @@ class LabeledBox extends StatelessWidget {
     this.controller,
     this.validator,
     this.required = true,
+    this.maxLength = 300,
+    this.showCounter = false,
   });
 
   @override
@@ -719,7 +753,8 @@ class LabeledBox extends StatelessWidget {
           enabled: enabled,
           minLines: 3,
           maxLines: 4,
-          maxLength: 200,
+          maxLength: maxLength,
+          style: TextStyle(color: enabled ? AppColors.text : AppColors.muted),
           validator:
               validator ??
               (required && enabled
@@ -727,7 +762,10 @@ class LabeledBox extends StatelessWidget {
                   : null),
           decoration: InputDecoration(
             hintText: hintText ?? label,
-            counterText: '',
+            hintStyle: TextStyle(
+              color: AppColors.muted.withValues(alpha: 0.55),
+            ),
+            counterText: showCounter ? null : '',
           ),
         ),
       ],
@@ -1107,7 +1145,7 @@ class CameraPreviewCard extends StatelessWidget {
                 icon,
                 color: hasImage
                     ? Colors.white.withValues(alpha: 0.84)
-                    : AppColors.green,
+                    : AppColors.green.withValues(alpha: 0.28),
                 size: hasImage ? 118 : 82,
               ),
             ),
@@ -1224,6 +1262,22 @@ class DashTextInputFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
+class DigitsOnlyInputFormatter extends TextInputFormatter {
+  const DigitsOnlyInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    return TextEditingValue(
+      text: digits,
+      selection: TextSelection.collapsed(offset: digits.length),
     );
   }
 }

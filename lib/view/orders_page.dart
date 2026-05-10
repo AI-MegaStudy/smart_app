@@ -35,8 +35,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
     return Scaffold(
       body: AppScaffold(
-        title: '예약 · 주문 현황',
-        subtitle: '오늘 들어온 고객 요청',
+        title: '주문 현황',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
@@ -73,7 +72,7 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
             ),
           FilterTabs(
-            labels: const ['전체', '예약', '결제 완료'],
+            labels: const ['전체', '주문 완료', '결제 완료'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
@@ -95,24 +94,24 @@ class _OrdersPageState extends State<OrdersPage> {
 
 const sampleOrders = [
   OrderRecord(
-    '홍길동 · 양광 5kg',
-    '2박스 · 78,000원 · 09:20',
+    '홍길동 · 양광 사과 5kg',
+    '2박스 · 78,000원 · 2026-05-07 09:20',
     '결제 완료',
     AppColors.blue,
     '09:20',
     '78,000원',
   ),
   OrderRecord(
-    '김민지 · 부사 3kg',
-    '1박스 · 32,000원 · 09:45',
-    '예약',
+    '김민지 · 부사 사과 3kg',
+    '1박스 · 32,000원 · 2026-05-07 09:45',
+    '주문 완료',
     AppColors.yellow,
     '09:45',
     '32,000원',
   ),
   OrderRecord(
-    '박서준 · 양광 7kg',
-    '1박스 · 68,000원 · 12:10',
+    '박서준 · 양광 사과 7kg',
+    '1박스 · 68,000원 · 2026-05-07 12:10',
     '결제 완료',
     AppColors.blue,
     '12:10',

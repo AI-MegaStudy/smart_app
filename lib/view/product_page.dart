@@ -22,7 +22,7 @@ class _ProductPageState extends State<ProductPage> {
   final products = [
     const ProductRecord('양광 사과', '5kg 박스', 39000, 42, '판매 중', AppColors.mint),
     const ProductRecord('부사 사과', '3kg 박스', 32000, 18, '준비 중', AppColors.yellow),
-    const ProductRecord('양광 사과', '7kg 박스', 68000, 12, '중지', Color(0xffFFE1DD)),
+    const ProductRecord('양광 사과', '7kg 박스', 68000, 12, '판매 중지', Color(0xffFFE1DD)),
   ];
 
   @override
@@ -35,9 +35,13 @@ class _ProductPageState extends State<ProductPage> {
     final product = await Navigator.of(context).push<ProductRecord>(
       MaterialPageRoute(builder: (_) => const ProductAddPage()),
     );
-    if (product != null) {
-      setState(() => products.add(product));
-    }
+    setState(() {
+      deleteMode = false;
+      selectedProducts.clear();
+      if (product != null) {
+        products.add(product);
+      }
+    });
   }
 
   Future<void> _openEdit(ProductRecord product) async {
@@ -60,7 +64,7 @@ class _ProductPageState extends State<ProductPage> {
       return;
     }
     if (selectedProducts.isEmpty) {
-      setState(() => deleteMode = false);
+      showOwnerSnack(context, '삭제할 상품을 선택하세요.');
       return;
     }
     showConfirmAction(
@@ -95,7 +99,6 @@ class _ProductPageState extends State<ProductPage> {
     return Scaffold(
       body: AppScaffold(
         title: '상품 관리',
-        subtitle: '포장 단위와 가격 관리',
         leading: ActionChipIcon(
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
@@ -139,7 +142,7 @@ class _ProductPageState extends State<ProductPage> {
               ),
             ),
           FilterTabs(
-            labels: const ['전체', '판매 중', '준비 중', '중지'],
+            labels: const ['전체', '판매 중', '준비 중', '판매 중지'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
@@ -177,25 +180,33 @@ class _ProductPageState extends State<ProductPage> {
                       }
                     });
                   },
-                  child: const Text('전체 선택'),
+                  child: Text(
+                    visible.isNotEmpty && selectedProducts.length == visible.length
+                        ? '전체 선택 해제'
+                        : '전체 선택',
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 TextButton(
                   onPressed: _toggleDeleteMode,
                   child: const Text('삭제'),
                 ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => setState(() {
+                    deleteMode = false;
+                    selectedProducts.clear();
+                  }),
+                  child: const Text('완료'),
+                ),
               ],
-            ),
-          Align(
+            )
+          else
+            Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: deleteMode
-                  ? () => setState(() {
-                      deleteMode = false;
-                      selectedProducts.clear();
-                    })
-                  : _toggleDeleteMode,
-              child: Text(deleteMode ? '완료' : '삭제'),
+              onPressed: _toggleDeleteMode,
+              child: const Text('삭제'),
             ),
           ),
         ],
@@ -213,7 +224,7 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stockStyle = TextStyle(
-      color: product.stockKg < 20 ? Colors.red : AppColors.muted,
+      color: product.stockKg <= 10 ? Colors.red : AppColors.muted,
       fontWeight: FontWeight.w800,
     );
     return Material(
@@ -264,7 +275,7 @@ class _ProductTile extends StatelessWidget {
                         children: [
                           TextSpan(text: '${product.priceLabel} · '),
                           TextSpan(
-                            text: '잔여 ${product.stockKg}kg',
+                            text: '잔여 ${product.stockKg}박스',
                             style: stockStyle,
                           ),
                         ],
@@ -305,7 +316,7 @@ class _ProductDeleteTile extends StatelessWidget {
         '${product.name} · ${product.packageUnit}',
         style: const TextStyle(fontWeight: FontWeight.w900),
       ),
-      subtitle: Text('${product.priceLabel} · 잔여 ${product.stockKg}kg'),
+      subtitle: Text('${product.priceLabel} · 잔여 ${product.stockKg}박스'),
       controlAffinity: ListTileControlAffinity.leading,
       tileColor: Colors.white,
       shape: RoundedRectangleBorder(

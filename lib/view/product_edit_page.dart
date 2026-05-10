@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:smart_app/model/product_record.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
@@ -82,7 +81,6 @@ class _ProductEditPageState extends State<ProductEditPage> {
         key: formKey,
         child: AppScaffold(
           title: '상품 수정',
-          subtitle: '상품 정보 수정',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
@@ -102,13 +100,14 @@ class _ProductEditPageState extends State<ProductEditPage> {
               label: '포장 단위',
               value: '',
               controller: packageController,
-              hintText: '포장 단위',
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              regexHint: '숫자만 입력',
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
-                final base = numericValidator(text);
-                return base == null ? null : '포장 단위에는 숫자만 입력하세요.';
+                final required = requiredValidator('포장 단위', text);
+                if (required != null) return required;
+                return RegExp(r'^\d+$').hasMatch(text!.trim())
+                    ? null
+                    : '포장 단위에는 숫자만 입력하세요.';
               },
               suffixText: 'kg 박스',
             ),
@@ -116,13 +115,14 @@ class _ProductEditPageState extends State<ProductEditPage> {
               label: '기본 판매가',
               value: '',
               controller: priceController,
-              hintText: '기본 판매가',
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              regexHint: '숫자만 입력',
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
-                final base = numericValidator(text);
-                return base == null ? null : '기본 판매가에는 숫자만 입력하세요.';
+                final required = requiredValidator('기본 판매가', text);
+                if (required != null) return required;
+                return RegExp(r'^\d+$').hasMatch(text!.trim())
+                    ? null
+                    : '기본 판매가에는 숫자만 입력하세요.';
               },
               suffixText: '원',
             ),
@@ -130,20 +130,21 @@ class _ProductEditPageState extends State<ProductEditPage> {
               label: '상품 수량',
               value: '',
               controller: stockController,
-              hintText: '상품 수량',
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              regexHint: '숫자만 입력',
+              inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
-                final base = numericValidator(text);
-                return base == null ? null : '상품 수량에는 숫자만 입력하세요.';
+                final required = requiredValidator('상품 수량', text);
+                if (required != null) return required;
+                return RegExp(r'^\d+$').hasMatch(text!.trim())
+                    ? null
+                    : '상품 수량에는 숫자만 입력하세요.';
               },
-              suffixText: 'kg',
+              suffixText: '박스',
             ),
             LabeledDropdown(
               label: '판매 상태',
               value: status,
-              items: const ['판매 중', '준비 중', '중지'],
+              items: const ['판매 중', '준비 중', '판매 중지'],
               onChanged: (value) {
                 if (value != null) {
                   setState(() => status = value);
