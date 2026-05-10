@@ -11,7 +11,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: '내 정보',
+      title: '마이',
       subtitle: '점주와 농장 정보',
       children: [
         const HeroPanel(
@@ -22,23 +22,19 @@ class ProfilePage extends StatelessWidget {
         ),
         ProfileListTile(
           icon: Icons.person_outline,
-          title: '내 정보',
-          subtitle: '이름, 전화번호, 사업자번호, 알림 설정',
-          onTap: () {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const OwnerDetailPage()));
-          },
+          title: '내 정보 수정',
+          subtitle: '이름, 이메일, 비밀번호, 전화번호, 사업자번호, 알림',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const OwnerDetailPage())),
         ),
         ProfileListTile(
           icon: Icons.warehouse_outlined,
-          title: '농장 정보',
-          subtitle: '농장명, 주소, 소개, 배송 정책, 반품 정책',
-          onTap: () {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const FarmDetailPage()));
-          },
+          title: '농장 정보 수정',
+          subtitle: '농장 소개, 주소, 배송 정책, 반품 정책',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const FarmDetailPage())),
         ),
         PrimaryAction(
           label: '로그아웃',
@@ -47,13 +43,36 @@ class ProfilePage extends StatelessWidget {
               context: context,
               title: '로그아웃',
               message: '현재 계정에서 로그아웃할까요?',
-              confirmLabel: '로그아웃',
+              confirmLabel: '확인',
               onConfirm: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginPage()),
                   (route) => false,
                 );
               },
+            );
+          },
+        ),
+        PrimaryAction(
+          label: '회원 탈퇴',
+          backgroundColor: Colors.red,
+          onPressed: () {
+            showConfirmAction(
+              context: context,
+              title: '회원 탈퇴',
+              message: '회원 탈퇴를 진행할까요?',
+              confirmLabel: '확인',
+              onConfirm: () => showInfoAction(
+                context: context,
+                title: '회원 탈퇴',
+                message: '회원 탈퇴 요청이 접수되었습니다.',
+                onConfirm: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                },
+              ),
             );
           },
         ),

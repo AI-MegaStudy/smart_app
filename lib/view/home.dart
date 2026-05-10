@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:smart_app/view/dashboard_page.dart';
 import 'package:smart_app/view/menu_page.dart';
 import 'package:smart_app/view/profile_page.dart';
@@ -27,7 +27,7 @@ class _HomeState extends State<Home> {
       child: DashboardPage(onJump: _selectTab),
     ),
     const _ShellPage(
-      label: '내 정보',
+      label: '마이',
       icon: Icons.person_outline,
       selectedIcon: Icons.person,
       child: ProfilePage(),

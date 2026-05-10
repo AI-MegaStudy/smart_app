@@ -19,6 +19,7 @@ Future<void> showConfirmAction({
   required String title,
   required String message,
   String confirmLabel = '확인',
+  bool destructive = false,
   required VoidCallback onConfirm,
 }) async {
   final confirmed = await showDialog<bool>(
@@ -40,6 +41,9 @@ Future<void> showConfirmAction({
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton(
+                  style: destructive
+                      ? FilledButton.styleFrom(backgroundColor: Colors.red)
+                      : null,
                   onPressed: () => Navigator.of(context).pop(true),
                   child: Text(confirmLabel),
                 ),
@@ -50,95 +54,127 @@ Future<void> showConfirmAction({
       );
     },
   );
-
   if (confirmed == true) {
     onConfirm();
   }
 }
 
+Future<void> showInfoAction({
+  required BuildContext context,
+  required String title,
+  required String message,
+  String confirmLabel = '확인',
+  VoidCallback? onConfirm,
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(confirmLabel),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+  onConfirm?.call();
+}
+
 String objectParticle(String text) {
-  if (text.isEmpty) {
-    return '을';
-  }
+  if (text.isEmpty) return '을';
   final code = text.characters.last.runes.first;
-  if (code < 0xAC00 || code > 0xD7A3) {
-    return '을';
-  }
+  if (code < 0xAC00 || code > 0xD7A3) return '를';
   return (code - 0xAC00) % 28 == 0 ? '를' : '을';
+}
+
+String subjectParticle(String text) {
+  if (text.isEmpty) return '이';
+  final code = text.characters.last.runes.first;
+  if (code < 0xAC00 || code > 0xD7A3) return '가';
+  return (code - 0xAC00) % 28 == 0 ? '가' : '이';
 }
 
 String requiredMessage(String label) => '$label${objectParticle(label)} 입력하세요.';
 
-String selectMessage(String label) => '$label${objectParticle(label)} 선택하세요.';
+String invalidMessage(String label) =>
+    '올바른 $label${subjectParticle(label)} 아닙니다.';
 
-String? requiredPatternMessage({
-  required String label,
-  required String? value,
-  required RegExp pattern,
-  required String example,
-}) {
-  final text = (value ?? '').trim();
-  if (text.isEmpty) {
-    return requiredMessage(label);
-  }
-  if (!pattern.hasMatch(text)) {
-    return '$label 형식을 확인하세요. 예: $example';
-  }
+String? requiredValidator(String label, String? value) {
+  if ((value ?? '').trim().isEmpty) return requiredMessage(label);
   return null;
 }
 
-String? phoneNumberValidator(String? value) => requiredPatternMessage(
-  label: '전화번호',
-  value: value,
-  pattern: RegExp(r'^01[016789]-\d{3,4}-\d{4}$'),
-  example: '010-0000-0000',
-);
+String? regexValidator({
+  required String label,
+  required String? value,
+  required RegExp pattern,
+  String? invalidText,
+}) {
+  final required = requiredValidator(label, value);
+  if (required != null) return required;
+  return pattern.hasMatch(value!.trim())
+      ? null
+      : invalidText ?? invalidMessage(label);
+}
 
-String? businessNumberValidator(String? value) => requiredPatternMessage(
-  label: '사업자번호',
-  value: value,
-  pattern: RegExp(r'^\d{3}-\d{2}-\d{5}$'),
-  example: '000-00-00000',
-);
-
-String? invoiceNumberValidator(String? value) => requiredPatternMessage(
-  label: '송장번호',
-  value: value,
-  pattern: RegExp(r'^\d{4}-\d{4}-\d{4}$'),
-  example: '1234-1234-1234',
-);
-
-String? nameValidator(String? value) => requiredPatternMessage(
+String? nameValidator(String? value) => regexValidator(
   label: '이름',
   value: value,
   pattern: RegExp(r'^[가-힣a-zA-Z\s]{2,20}$'),
-  example: '김하늘',
 );
 
-String? emailValidator(String? value) => requiredPatternMessage(
+String? emailValidator(String? value) => regexValidator(
   label: '이메일',
   value: value,
   pattern: RegExp(r'^[\w.\-]+@[\w\-]+(\.[\w\-]+)+$'),
-  example: 'owner@example.com',
 );
 
-String? passwordValidator(String? value) => requiredPatternMessage(
+String? passwordValidator(String? value) => regexValidator(
   label: '비밀번호',
   value: value,
-  pattern: RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$'),
-  example: 'abc12345',
+  pattern: RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,20}$'),
+  invalidText: '비밀번호는 영문과 숫자를 포함해 8~20자로 입력하세요.',
 );
 
-String? numericValidator(String? value) => requiredPatternMessage(
-  label: '숫자',
-  value: value,
-  pattern: RegExp(r'^\d+$'),
-  example: '123',
-);
+String? phoneValidator(String? value) =>
+    regexValidator(label: '전화번호', value: value, pattern: RegExp(r'^\d{9,11}$'));
+
+String? businessValidator(String? value) =>
+    regexValidator(label: '사업자번호', value: value, pattern: RegExp(r'^\d{10}$'));
+
+String? invoiceValidator(String? value) =>
+    regexValidator(label: '송장번호', value: value, pattern: RegExp(r'^\d{8,20}$'));
+
+String? numberValidator(String label, String? value) {
+  final required = requiredValidator(label, value);
+  if (required != null) return required;
+  return RegExp(r'^\d+$').hasMatch(value!.trim())
+      ? null
+      : invalidMessage(label);
+}
+
+String? numericValidator(String? value) {
+  if ((value ?? '').trim().isEmpty) return '값을 입력하세요.';
+  return RegExp(r'^\d+$').hasMatch(value!.trim()) ? null : '숫자만 입력하세요.';
+}
+
+String? phoneNumberValidator(String? value) => phoneValidator(value);
+
+String? businessNumberValidator(String? value) => businessValidator(value);
+
+String? invoiceNumberValidator(String? value) => invoiceValidator(value);
 
 class AppScaffold extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget? leading;
   final Widget? trailing;
   final List<Widget> children;
@@ -146,7 +182,7 @@ class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.leading,
     this.trailing,
     required this.children,
@@ -183,18 +219,20 @@ class AppScaffold extends StatelessWidget {
                               height: 1.15,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontWeight: FontWeight.w700,
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle!,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
-                    ?trailing,
+                    trailing ?? const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -220,9 +258,6 @@ class HeroPanel extends StatelessWidget {
   final String title;
   final IconData icon;
   final bool compact;
-  final double? height;
-  final int titleMaxLines;
-  final double? titleFontSize;
 
   const HeroPanel({
     super.key,
@@ -230,15 +265,12 @@ class HeroPanel extends StatelessWidget {
     required this.title,
     required this.icon,
     this.compact = false,
-    this.height,
-    this.titleMaxLines = 3,
-    this.titleFontSize,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: height ?? 176,
+      height: 176,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.green,
@@ -276,11 +308,11 @@ class HeroPanel extends StatelessWidget {
               const SizedBox(height: 9),
               Text(
                 title,
-                maxLines: titleMaxLines,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: titleFontSize ?? (compact ? 28 : 26),
+                  fontSize: compact ? 28 : 26,
                   fontWeight: FontWeight.w900,
                   height: 1.08,
                 ),
@@ -383,6 +415,9 @@ class DataTile extends StatelessWidget {
   final String badge;
   final Color badgeColor;
   final VoidCallback? onTap;
+  final Color iconBackground;
+  final Color iconColor;
+  final TextStyle? subtitleStyle;
 
   const DataTile({
     super.key,
@@ -392,6 +427,9 @@ class DataTile extends StatelessWidget {
     required this.badge,
     required this.badgeColor,
     this.onTap,
+    this.iconBackground = AppColors.mint,
+    this.iconColor = AppColors.green,
+    this.subtitleStyle,
   });
 
   @override
@@ -414,10 +452,10 @@ class DataTile extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: AppColors.mint,
+                  color: iconBackground,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: AppColors.green),
+                child: Icon(icon, color: iconColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -442,13 +480,15 @@ class DataTile extends StatelessWidget {
                       style: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w700,
-                      ),
+                      ).merge(subtitleStyle),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              StatusBadge(text: badge, color: badgeColor),
+              if (badge.isNotEmpty) ...[
+                const SizedBox(width: 10),
+                StatusBadge(text: badge, color: badgeColor),
+              ],
             ],
           ),
         ),
@@ -520,6 +560,7 @@ class LabeledField extends StatefulWidget {
   final String label;
   final String value;
   final String? hintText;
+  final String? helperText;
   final String? regexHint;
   final bool enabled;
   final TextEditingController? controller;
@@ -527,12 +568,16 @@ class LabeledField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
   final String? suffixText;
+  final int maxLength;
+  final bool obscureText;
+  final bool readOnly;
 
   const LabeledField({
     super.key,
     required this.label,
     required this.value,
     this.hintText,
+    this.helperText,
     this.regexHint,
     this.enabled = true,
     this.controller,
@@ -540,6 +585,9 @@ class LabeledField extends StatefulWidget {
     this.inputFormatters,
     this.validator,
     this.suffixText,
+    this.maxLength = 20,
+    this.obscureText = false,
+    this.readOnly = false,
   });
 
   @override
@@ -550,6 +598,12 @@ class _LabeledFieldState extends State<LabeledField> {
   final focusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    focusNode.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     focusNode.dispose();
     super.dispose();
@@ -557,6 +611,7 @@ class _LabeledFieldState extends State<LabeledField> {
 
   @override
   Widget build(BuildContext context) {
+    final inactive = !widget.enabled || widget.readOnly;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -567,27 +622,25 @@ class _LabeledFieldState extends State<LabeledField> {
           controller: widget.controller,
           initialValue: widget.controller == null ? widget.value : null,
           enabled: widget.enabled,
+          readOnly: widget.readOnly,
+          style: TextStyle(color: inactive ? AppColors.muted : AppColors.text),
+          obscureText: widget.obscureText,
           keyboardType: widget.keyboardType,
           inputFormatters: widget.inputFormatters,
+          maxLength: widget.maxLength,
           validator:
               widget.validator ??
               (widget.enabled
-                  ? (text) {
-                      if ((text ?? '').trim().isEmpty) {
-                        return requiredMessage(widget.label);
-                      }
-                      return null;
-                    }
+                  ? (text) => requiredValidator(widget.label, text)
                   : null),
           decoration: InputDecoration(
             hintText: widget.hintText ?? widget.label,
-            helperText: focusNode.hasFocus && widget.regexHint != null
-                ? widget.regexHint
+            helperText: focusNode.hasFocus
+                ? widget.helperText ?? widget.regexHint
                 : null,
             suffix: widget.suffixText == null ? null : Text(widget.suffixText!),
+            counterText: '',
           ),
-          onTap: () => setState(() {}),
-          onChanged: (_) => setState(() {}),
         ),
       ],
     );
@@ -626,7 +679,7 @@ class LabeledNumberField extends StatelessWidget {
           validator ??
           (text) {
             final base = numericValidator(text);
-            return base == null ? null : '$label에는 숫자만 입력하세요.';
+            return base == null ? null : requiredMessage(label);
           },
       suffixText: suffixText,
     );
@@ -640,6 +693,7 @@ class LabeledBox extends StatelessWidget {
   final bool enabled;
   final TextEditingController? controller;
   final FormFieldValidator<String>? validator;
+  final bool required;
 
   const LabeledBox({
     super.key,
@@ -649,6 +703,7 @@ class LabeledBox extends StatelessWidget {
     this.enabled = true,
     this.controller,
     this.validator,
+    this.required = true,
   });
 
   @override
@@ -664,17 +719,16 @@ class LabeledBox extends StatelessWidget {
           enabled: enabled,
           minLines: 3,
           maxLines: 4,
+          maxLength: 200,
           validator:
               validator ??
-              (enabled
-                  ? (text) {
-                      if ((text ?? '').trim().isEmpty) {
-                        return requiredMessage(label);
-                      }
-                      return null;
-                    }
+              (required && enabled
+                  ? (text) => requiredValidator(label, text)
                   : null),
-          decoration: InputDecoration(hintText: hintText ?? label),
+          decoration: InputDecoration(
+            hintText: hintText ?? label,
+            counterText: '',
+          ),
         ),
       ],
     );
@@ -705,21 +759,26 @@ class LabeledDropdown extends StatelessWidget {
         _FieldLabel(label),
         const SizedBox(height: 7),
         DropdownButtonFormField<String>(
-          initialValue: value,
+          initialValue: value.isEmpty ? '' : value,
           isExpanded: true,
+          alignment: AlignmentDirectional.centerStart,
           menuMaxHeight: kMinInteractiveDimension * 5,
           items: [
-            const DropdownMenuItem(value: '', child: Text('선택하세요.')),
+            const DropdownMenuItem(
+              value: '',
+              alignment: Alignment.centerLeft,
+              child: Text('선택하세요.'),
+            ),
             for (final item in items)
-              DropdownMenuItem(value: item, child: Text(item)),
+              DropdownMenuItem(
+                value: item,
+                alignment: Alignment.centerLeft,
+                child: Text(item),
+              ),
           ],
           onChanged: onChanged,
-          validator: (text) {
-            if ((text ?? '').trim().isEmpty) {
-              return selectMessage(label);
-            }
-            return null;
-          },
+          validator: (text) =>
+              (text ?? '').trim().isEmpty ? requiredMessage(label) : null,
           decoration: InputDecoration(hintText: hintText ?? label),
         ),
       ],
@@ -767,60 +826,6 @@ class NoticeBox extends StatelessWidget {
           fontWeight: FontWeight.w900,
           height: 1.45,
         ),
-      ),
-    );
-  }
-}
-
-class ChipRow extends StatelessWidget {
-  final List<String> labels;
-
-  const ChipRow({super.key, required this.labels});
-
-  @override
-  Widget build(BuildContext context) {
-    return _SelectableChipRow(labels: labels);
-  }
-}
-
-class _SelectableChipRow extends StatefulWidget {
-  final List<String> labels;
-
-  const _SelectableChipRow({required this.labels});
-
-  @override
-  State<_SelectableChipRow> createState() => _SelectableChipRowState();
-}
-
-class _SelectableChipRowState extends State<_SelectableChipRow> {
-  int selectedIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < widget.labels.length; i++) ...[
-            ChoiceChip(
-              selected: selectedIndex == i,
-              label: Text(widget.labels[i]),
-              showCheckmark: true,
-              checkmarkColor: Colors.white,
-              selectedColor: AppColors.green,
-              labelStyle: TextStyle(
-                color: selectedIndex == i ? Colors.white : AppColors.muted,
-                fontWeight: FontWeight.w900,
-              ),
-              onSelected: (_) {
-                setState(() {
-                  selectedIndex = i;
-                });
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
       ),
     );
   }
@@ -884,21 +889,6 @@ class ActionChipIcon extends StatelessWidget {
   }
 }
 
-class ActionChipText extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-
-  const ActionChipText({super.key, required this.text, this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton.filled(
-      onPressed: onPressed ?? () {},
-      icon: Text(text, style: const TextStyle(fontWeight: FontWeight.w900)),
-    );
-  }
-}
-
 class DualActionBar extends StatelessWidget {
   final String left;
   final String right;
@@ -941,14 +931,26 @@ class DualActionBar extends StatelessWidget {
 class PrimaryAction extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
+  final Color? backgroundColor;
 
-  const PrimaryAction({super.key, required this.label, this.onPressed});
+  const PrimaryAction({
+    super.key,
+    required this.label,
+    this.onPressed,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: FilledButton(onPressed: onPressed ?? () {}, child: Text(label)),
+      child: FilledButton(
+        style: backgroundColor == null
+            ? null
+            : FilledButton.styleFrom(backgroundColor: backgroundColor),
+        onPressed: onPressed ?? () {},
+        child: Text(label),
+      ),
     );
   }
 }
@@ -995,17 +997,14 @@ class YieldChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const SizedBox(
-            height: 12,
-            child: Row(
-              children: [
-                _ChartLabel('10.12'),
-                _ChartLabel('10.13'),
-                _ChartLabel('10.14'),
-                _ChartLabel('10.15'),
-                _ChartLabel('10.16'),
-              ],
-            ),
+          const Row(
+            children: [
+              _ChartLabel('10.12'),
+              _ChartLabel('10.13'),
+              _ChartLabel('10.14'),
+              _ChartLabel('10.15'),
+              _ChartLabel('10.16'),
+            ],
           ),
         ],
       ),
@@ -1050,7 +1049,6 @@ class _ChartLabel extends StatelessWidget {
     return Expanded(
       child: Text(
         label,
-        maxLines: 1,
         textAlign: TextAlign.center,
         style: const TextStyle(
           color: AppColors.muted,
@@ -1086,104 +1084,55 @@ class CameraPreviewCard extends StatelessWidget {
       height: 210,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Colors.white,
-        border: Border.all(color: AppColors.line),
+        gradient: LinearGradient(
+          colors: hasImage
+              ? const [Color(0xff9F2F25), Color(0xffE57352), Color(0xffF6B38D)]
+              : const [Color(0xffF4F7F1), Color(0xffDCECE4)],
+        ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final size = Size(constraints.maxWidth, constraints.maxHeight);
-          final anchor = Offset(
-            inspectionAnchor.dx.clamp(0.0, 1.0) * size.width,
-            inspectionAnchor.dy.clamp(0.0, 1.0) * size.height,
-          );
-          void updateAnchorByDelta(Offset delta) {
-            final normalized = Offset(
-              ((anchor.dx + delta.dx) / size.width).clamp(0.0, 1.0),
-              ((anchor.dy + delta.dy) / size.height).clamp(0.0, 1.0),
-            );
-            onInspectionAnchorChanged?.call(normalized);
-          }
-
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: imageBytes == null
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: hasImage
-                              ? const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xff9F2F25),
-                                    Color(0xffE57352),
-                                    Color(0xffF6B38D),
-                                  ],
-                                )
-                              : const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xffF4F7F1),
-                                    Color(0xffDCECE4),
-                                  ],
-                                ),
-                        ),
-                      )
-                    : Image.memory(
-                        imageBytes!,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                      ),
+      child: Stack(
+        children: [
+          if (imageBytes != null)
+            Positioned.fill(
+              child: Image.memory(
+                imageBytes!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
               ),
-              if (imageBytes != null)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: hasImage ? const _ProduceTexturePainter() : null,
+            )
+          else
+            Center(
+              child: Icon(
+                icon,
+                color: hasImage
+                    ? Colors.white.withValues(alpha: 0.84)
+                    : AppColors.green,
+                size: hasImage ? 118 : 82,
+              ),
+            ),
+          if (label != null)
+            Positioned(
+              left: 16,
+              top: 16,
+              child: StatusBadge(text: label!, color: Colors.white),
+            ),
+          if (hasImage)
+            _InspectionOverlayTool(
+              anchor: inspectionAnchor,
+              onChanged: onInspectionAnchorChanged,
+            ),
+          if (!hasImage)
+            const Center(
+              child: Text(
+                '갤러리에서 이미지를 선택하세요',
+                style: TextStyle(
+                  color: AppColors.green,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              if (imageBytes == null)
-                Center(
-                  child: Icon(
-                    icon,
-                    color: Colors.white.withValues(
-                      alpha: hasImage ? 0.84 : 0.92,
-                    ),
-                    size: hasImage ? 118 : 82,
-                  ),
-                ),
-              if (label != null)
-                Positioned(
-                  left: 16,
-                  top: 16,
-                  child: StatusBadge(text: label!, color: Colors.white),
-                ),
-              if (hasImage)
-                _InspectionOverlayTool(
-                  anchor: anchor,
-                  onDragBy: updateAnchorByDelta,
-                )
-              else
-                const Center(
-                  child: Text(
-                    '갤러리에서 이미지를 선택하세요',
-                    style: TextStyle(
-                      color: AppColors.green,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
+            ),
+        ],
       ),
     );
   }
@@ -1191,53 +1140,42 @@ class CameraPreviewCard extends StatelessWidget {
 
 class _InspectionOverlayTool extends StatelessWidget {
   final Offset anchor;
-  final ValueChanged<Offset> onDragBy;
+  final ValueChanged<Offset>? onChanged;
 
-  const _InspectionOverlayTool({required this.anchor, required this.onDragBy});
-
-  static const boxWidth = 168.0;
-  static const boxHeight = 118.0;
-  static const handleSize = 26.0;
-  static const handleOverlap = 13.0;
+  const _InspectionOverlayTool({required this.anchor, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final boxLeft = anchor.dx - boxWidth / 2;
-    final boxTop = anchor.dy - boxHeight - handleOverlap;
-    final handleLeft = anchor.dx - handleSize / 2;
-    final handleTop = anchor.dy - handleSize / 2;
-
-    return Stack(
-      children: [
-        Positioned(
-          left: boxLeft,
-          top: boxTop,
-          child: IgnorePointer(
-            child: Container(
-              width: boxWidth,
-              height: boxHeight,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 3),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: handleLeft,
-          top: handleTop,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final left = (anchor.dx * constraints.maxWidth).clamp(
+          16.0,
+          constraints.maxWidth - 42.0,
+        );
+        final top = (anchor.dy * constraints.maxHeight).clamp(
+          16.0,
+          constraints.maxHeight - 42.0,
+        );
+        return Positioned(
+          left: left,
+          top: top,
           child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanUpdate: (details) => onDragBy(details.delta),
+            onPanUpdate: (details) {
+              final next = Offset(
+                ((left + details.delta.dx) / constraints.maxWidth).clamp(
+                  0.0,
+                  1.0,
+                ),
+                ((top + details.delta.dy) / constraints.maxHeight).clamp(
+                  0.0,
+                  1.0,
+                ),
+              );
+              onChanged?.call(next);
+            },
             child: Container(
-              width: handleSize,
-              height: handleSize,
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
                 color: AppColors.green,
                 shape: BoxShape.circle,
@@ -1252,32 +1190,10 @@ class _InspectionOverlayTool extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
-}
-
-class _ProduceTexturePainter extends CustomPainter {
-  const _ProduceTexturePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.13);
-    final spots = [
-      Offset(size.width * 0.20, size.height * 0.32),
-      Offset(size.width * 0.38, size.height * 0.56),
-      Offset(size.width * 0.62, size.height * 0.36),
-      Offset(size.width * 0.78, size.height * 0.62),
-      Offset(size.width * 0.52, size.height * 0.72),
-    ];
-    for (final spot in spots) {
-      canvas.drawCircle(spot, 34, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class DashTextInputFormatter extends TextInputFormatter {
@@ -1294,20 +1210,14 @@ class DashTextInputFormatter extends TextInputFormatter {
     final buffer = StringBuffer();
     var offset = 0;
     for (final size in groups) {
-      if (offset >= digits.length) {
-        break;
-      }
+      if (offset >= digits.length) break;
       final end = (offset + size).clamp(0, digits.length);
-      if (buffer.isNotEmpty) {
-        buffer.write('-');
-      }
+      if (buffer.isNotEmpty) buffer.write('-');
       buffer.write(digits.substring(offset, end));
       offset = end;
     }
     if (offset < digits.length) {
-      if (buffer.isNotEmpty) {
-        buffer.write('-');
-      }
+      if (buffer.isNotEmpty) buffer.write('-');
       buffer.write(digits.substring(offset));
     }
     final text = buffer.toString();

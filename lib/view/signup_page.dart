@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:kpostal_plus/kpostal_plus.dart';
+import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class SignupPage extends StatefulWidget {
@@ -12,35 +15,125 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
-  final emailController = TextEditingController();
+  final emailLocalController = TextEditingController();
   final passwordController = TextEditingController();
+  final passwordConfirmController = TextEditingController();
   final phoneController = TextEditingController();
   final businessController = TextEditingController();
+  final farmController = TextEditingController();
+  final addressController = TextEditingController();
+
+  String emailDomain = '';
+  bool emailChecked = false;
+  String? emailRowError;
+
+  static const emailDomains = ['gmail.com', 'naver.com', 'daum.net'];
+  static const fallbackAddresses = [
+    '충북 충주시 산척면 과수원길 24',
+    '충북 충주시 주덕읍 냇내로 18',
+    '충북 충주시 동량면 사과밭길 7',
+  ];
 
   @override
   void dispose() {
     nameController.dispose();
-    emailController.dispose();
+    emailLocalController.dispose();
     passwordController.dispose();
+    passwordConfirmController.dispose();
     phoneController.dispose();
     businessController.dispose();
+    farmController.dispose();
+    addressController.dispose();
     super.dispose();
   }
 
+  String get fullEmail => '${emailLocalController.text.trim()}@$emailDomain';
+
+  void _checkEmail() {
+    if (emailLocalController.text.trim().isEmpty || emailDomain.isEmpty) {
+      setState(() => emailRowError = '이메일을 입력하세요.');
+      return;
+    }
+    final used = fullEmail == 'owner@harvestslot.kr';
+    setState(() {
+      emailChecked = !used;
+      emailRowError = null;
+    });
+    showInfoAction(
+      context: context,
+      title: '이메일 중복 확인',
+      message: used ? '사용 중인 이메일입니다.' : '사용 가능한 이메일입니다.',
+    );
+  }
+
+  Future<void> _searchAddress() async {
+    if (!kIsWeb &&
+        defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            children: [
+              const SectionHeader(title: '주소 검색 결과'),
+              for (final address in fallbackAddresses)
+                ListTile(
+                  title: Text(address),
+                  leading: const Icon(Icons.location_on_outlined),
+                  onTap: () => Navigator.of(context).pop(address),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (selected != null) setState(() => addressController.text = selected);
+      return;
+    }
+
+    final result = await Navigator.of(context).push<Kpostal>(
+      MaterialPageRoute(
+        builder: (_) => KpostalPlusView(
+          title: '주소 검색',
+          appBarColor: AppColors.green,
+          titleColor: Colors.white,
+        ),
+      ),
+    );
+    if (result == null) return;
+    final selected = result.userSelectedAddress.isNotEmpty
+        ? result.userSelectedAddress
+        : result.address;
+    setState(() => addressController.text = selected);
+  }
+
   void _submit() {
-    if (!(formKey.currentState?.validate() ?? false)) {
-      showOwnerSnack(context, '입력 형식을 확인하세요.');
+    final missingEmail =
+        emailLocalController.text.trim().isEmpty || emailDomain.isEmpty;
+    setState(() {
+      emailRowError = missingEmail ? '이메일을 입력하세요.' : null;
+    });
+    final valid = formKey.currentState?.validate() ?? false;
+    if (!valid || missingEmail) {
+      return;
+    }
+    if (!emailChecked) {
+      showOwnerSnack(context, '이메일 중복 확인을 진행하세요.');
       return;
     }
     showConfirmAction(
       context: context,
       title: '회원가입',
       message: '입력한 정보로 계정을 생성할까요?',
-      confirmLabel: '가입',
-      onConfirm: () {
-        showOwnerSnack(context, '회원가입 요청이 완료되었습니다.');
-        Navigator.of(context).pop();
-      },
+      confirmLabel: '확인',
+      onConfirm: () => showInfoAction(
+        context: context,
+        title: '회원가입',
+        message: '회원가입 요청이 완료되었습니다.',
+        onConfirm: () => Navigator.of(context).pop(),
+      ),
     );
   }
 
@@ -51,64 +144,171 @@ class _SignupPageState extends State<SignupPage> {
         key: formKey,
         child: AppScaffold(
           title: '회원가입',
-          subtitle: '점주 계정 생성',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
           ),
           children: [
+            const SectionHeader(title: '내 정보'),
             LabeledField(
               label: '이름',
               value: '',
               controller: nameController,
               hintText: '이름',
-              regexHint: '한글/영문 2-20자',
               validator: nameValidator,
             ),
-            LabeledField(
-              label: '이메일',
-              value: '',
-              controller: emailController,
-              hintText: '이메일',
-              regexHint: 'owner@example.com',
-              keyboardType: TextInputType.emailAddress,
-              validator: emailValidator,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: LabeledField(
+                        label: '이메일',
+                        value: '',
+                        controller: emailLocalController,
+                        hintText: '이메일',
+                        validator: (_) => null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: DropdownButtonFormField<String>(
+                          initialValue: emailDomain.isEmpty
+                              ? null
+                              : emailDomain,
+                          isExpanded: true,
+                          alignment: AlignmentDirectional.centerStart,
+                          menuMaxHeight: kMinInteractiveDimension * 5,
+                          hint: const Text('선택하세요.'),
+                          decoration: const InputDecoration(hintText: '선택하세요.'),
+                          items: [
+                            const DropdownMenuItem(
+                              value: '',
+                              alignment: Alignment.centerLeft,
+                              child: Text('선택하세요.'),
+                            ),
+                            for (final domain in emailDomains)
+                              DropdownMenuItem(
+                                value: domain,
+                                alignment: Alignment.centerLeft,
+                                child: Text(domain),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              emailDomain = value ?? '';
+                              emailChecked = false;
+                              emailRowError = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: SizedBox(
+                        width: 112,
+                        height: 56,
+                        child: FilledButton(
+                          onPressed: _checkEmail,
+                          child: const Text(
+                            '중복 확인',
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (emailRowError != null) ...[
+                  const SizedBox(height: 7),
+                  Text(
+                    emailRowError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
             ),
             LabeledField(
               label: '비밀번호',
               value: '',
               controller: passwordController,
               hintText: '비밀번호',
-              regexHint: '영문+숫자 포함 8자 이상',
+              helperText: '영문과 숫자를 포함해 8~20자',
+              obscureText: true,
               validator: passwordValidator,
+            ),
+            LabeledField(
+              label: '비밀번호 확인',
+              value: '',
+              controller: passwordConfirmController,
+              hintText: '비밀번호 확인',
+              obscureText: true,
+              validator: (value) {
+                final required = requiredValidator('비밀번호 확인', value);
+                if (required != null) return required;
+                return value == passwordController.text
+                    ? null
+                    : '비밀번호가 일치하지 않습니다.';
+              },
             ),
             LabeledField(
               label: '전화번호',
               value: '',
               controller: phoneController,
               hintText: '전화번호',
-              regexHint: '010-0000-0000',
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                const DashTextInputFormatter([3, 4, 4]),
-              ],
-              validator: phoneNumberValidator,
+              maxLength: 11,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: phoneValidator,
             ),
             LabeledField(
               label: '사업자번호',
               value: '',
               controller: businessController,
               hintText: '사업자번호',
-              regexHint: '000-00-00000',
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                const DashTextInputFormatter([3, 2, 5]),
-              ],
-              validator: businessNumberValidator,
+              maxLength: 10,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: businessValidator,
             ),
-            PrimaryAction(label: '회원가입', onPressed: _submit),
+            const SizedBox(height: 12),
+            const SectionHeader(title: '농장 정보'),
+            LabeledField(
+              label: '농장명',
+              value: '',
+              controller: farmController,
+              hintText: '농장명',
+            ),
+            LabeledField(
+              label: '주소',
+              value: '',
+              controller: addressController,
+              hintText: '주소',
+              readOnly: true,
+              validator: (value) => requiredValidator('주소', value),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: _searchAddress,
+              icon: const Icon(Icons.search),
+              label: const Text('주소 검색'),
+            ),
+            const SizedBox(height: 12),
+            DualActionBar(
+              left: '취소',
+              right: '회원가입',
+              onLeftPressed: () => Navigator.of(context).pop(),
+              onRightPressed: _submit,
+            ),
           ],
         ),
       ),
