@@ -11,9 +11,12 @@ class OwnerDetailPage extends StatefulWidget {
 
 class _OwnerDetailPageState extends State<OwnerDetailPage> {
   final formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  final businessController = TextEditingController();
+  final nameController = TextEditingController(text: '김하늘');
+  final emailController = TextEditingController(text: 'owner@harvestslot.kr');
+  final passwordController = TextEditingController(text: 'owner1234');
+  final passwordConfirmController = TextEditingController(text: 'owner1234');
+  final phoneController = TextEditingController(text: '1022223344');
+  final businessController = TextEditingController(text: '3124567890');
   String orderNotice = '즉시 알림';
   String returnNotice = '즉시 알림';
   String shipmentNotice = '즉시 알림';
@@ -21,21 +24,21 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
   @override
   void dispose() {
     nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    passwordConfirmController.dispose();
     phoneController.dispose();
     businessController.dispose();
     super.dispose();
   }
 
   void _save() {
-    if (!(formKey.currentState?.validate() ?? false)) {
-      showOwnerSnack(context, '모든 항목을 입력한 뒤 저장하세요.');
-      return;
-    }
+    if (!(formKey.currentState?.validate() ?? false)) return;
     showConfirmAction(
       context: context,
       title: '내 정보 저장',
       message: '입력한 내 정보로 갱신할까요?',
-      confirmLabel: '저장',
+      confirmLabel: '확인',
       onConfirm: () => showOwnerSnack(context, '내 정보가 저장되었습니다.'),
     );
   }
@@ -47,7 +50,6 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
         key: formKey,
         child: AppScaffold(
           title: '내 정보 수정',
-          subtitle: '점주 기본 정보',
           leading: ActionChipIcon(
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
@@ -58,49 +60,73 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               value: '',
               controller: nameController,
               hintText: '이름',
-              regexHint: '한글/영문 2-20자',
               validator: nameValidator,
+            ),
+            LabeledField(
+              label: '이메일',
+              value: '',
+              controller: emailController,
+              hintText: '이메일',
+              keyboardType: TextInputType.emailAddress,
+              validator: emailValidator,
+            ),
+            LabeledField(
+              label: '비밀번호',
+              value: '',
+              controller: passwordController,
+              hintText: '비밀번호',
+              helperText: '영문과 숫자를 포함해 8~20자',
+              obscureText: true,
+              validator: passwordValidator,
+            ),
+            LabeledField(
+              label: '비밀번호 확인',
+              value: '',
+              controller: passwordConfirmController,
+              hintText: '비밀번호 확인',
+              obscureText: true,
+              validator: (value) {
+                final required = requiredValidator('비밀번호 확인', value);
+                if (required != null) return required;
+                return value == passwordController.text
+                    ? null
+                    : '비밀번호가 일치하지 않습니다.';
+              },
             ),
             LabeledField(
               label: '전화번호',
               value: '',
               controller: phoneController,
               hintText: '전화번호',
-              regexHint: '010-0000-0000',
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                const DashTextInputFormatter([3, 4, 4]),
-              ],
-              validator: phoneNumberValidator,
+              maxLength: 11,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: phoneValidator,
             ),
             LabeledField(
               label: '사업자번호',
               value: '',
               controller: businessController,
               hintText: '사업자번호',
-              regexHint: '000-00-00000',
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                const DashTextInputFormatter([3, 2, 5]),
-              ],
-              validator: businessNumberValidator,
+              maxLength: 10,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: businessValidator,
             ),
             NoticeRadioGroup(
               title: '발주 알림',
               value: orderNotice,
-              onChanged: (value) => setState(() => orderNotice = value),
+              onChanged: (v) => setState(() => orderNotice = v),
             ),
             NoticeRadioGroup(
               title: '반품 알림',
               value: returnNotice,
-              onChanged: (value) => setState(() => returnNotice = value),
+              onChanged: (v) => setState(() => returnNotice = v),
             ),
             NoticeRadioGroup(
               title: '배송 알림',
               value: shipmentNotice,
-              onChanged: (value) => setState(() => shipmentNotice = value),
+              onChanged: (v) => setState(() => shipmentNotice = v),
             ),
             DualActionBar(
               left: '취소',
@@ -134,13 +160,10 @@ class NoticeRadioGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6),
         RadioGroup<String>(
           groupValue: value,
           onChanged: (next) {
-            if (next != null) {
-              onChanged(next);
-            }
+            if (next != null) onChanged(next);
           },
           child: Column(
             children: [

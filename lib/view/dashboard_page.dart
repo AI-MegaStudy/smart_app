@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/harvest_slot_page.dart';
 import 'package:smart_app/view/procurement_page.dart';
 import 'package:smart_app/view/quality_page.dart';
-import 'package:smart_app/view/return_page.dart';
 import 'package:smart_app/view/shipment_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 import 'package:smart_app/vm/dashboard_viewmodel.dart';
@@ -19,31 +17,28 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  bool _didLoadDashboard = false;
+  bool didLoad = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_didLoadDashboard) {
-      return;
-    }
-    _didLoadDashboard = true;
+    if (didLoad) return;
+    didLoad = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardViewModel>().loadDashboard();
     });
   }
 
-  void _openPage(Widget page) {
+  void _open(Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<DashboardViewModel>();
-    final dashboard = vm.dashboard;
+    final dashboard = context.watch<DashboardViewModel>().dashboard;
 
     return AppScaffold(
-      title: '안녕하세요, 김점주님',
+      title: '안녕하세요, 김하늘 점주님',
       subtitle: '충주 햇살농원',
       children: [
         HeroPanel(
@@ -51,8 +46,6 @@ class _DashboardPageState extends State<DashboardPage> {
           title:
               '발주 ${dashboard?.newProcurements ?? 4}건과 선별 ${dashboard?.inspectionWaiting ?? 7}건이 기다립니다',
           icon: Icons.spa,
-          titleMaxLines: 1,
-          titleFontSize: 21,
         ),
         GridCards(
           children: [
@@ -60,47 +53,27 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icons.event_available_outlined,
               value: '${dashboard?.openSlots ?? 6}',
               label: '열린 수확 슬롯',
-              onTap: () => _openPage(const HarvestSlotPage()),
+              onTap: () => _open(const HarvestSlotPage()),
             ),
             MetricCard(
               icon: Icons.assignment_turned_in_outlined,
               value: '${dashboard?.newProcurements ?? 4}',
               label: '신규 발주',
-              onTap: () => _openPage(const ProcurementPage()),
+              onTap: () => _open(const ProcurementPage()),
             ),
             MetricCard(
               icon: Icons.center_focus_strong_outlined,
               value: '${dashboard?.inspectionWaiting ?? 7}',
               label: '선별 대기',
-              onTap: () => _openPage(const QualityPage()),
+              onTap: () => _open(const QualityPage()),
             ),
             MetricCard(
               icon: Icons.local_shipping_outlined,
               value: '${dashboard?.readyToShip ?? 3}',
               label: '배송 준비',
-              onTap: () => _openPage(const ShipmentPage()),
+              onTap: () => _open(const ShipmentPage()),
             ),
           ],
-        ),
-        SectionHeader(
-          title: '긴급 확인',
-          actionText: '${dashboard?.returnRequests ?? 2}건',
-        ),
-        DataTile(
-          icon: Icons.local_florist,
-          title: '양광 5kg 발주 승인',
-          subtitle: '홍길동 고객 · 2박스',
-          badge: '대기',
-          badgeColor: AppColors.yellow,
-          onTap: () => _openPage(const ProcurementPage()),
-        ),
-        DataTile(
-          icon: Icons.keyboard_return,
-          title: '배송 중 파손',
-          subtitle: '사진 2장 첨부 · 환불 검토',
-          badge: '확인 필요',
-          badgeColor: const Color(0xffFFE1DD),
-          onTap: () => _openPage(const ReturnPage()),
         ),
       ],
     );
