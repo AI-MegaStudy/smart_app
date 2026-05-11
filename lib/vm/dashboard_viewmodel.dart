@@ -22,8 +22,8 @@ class DashboardViewModel extends ChangeNotifier {
 
     try {
       dashboard = await repository.fetchDashboard();
-    } catch (_) {
-      errorMessage = '대시보드 정보를 불러오지 못했습니다.';
+    } catch (error) {
+      errorMessage = error.toString();
     }
 
     isLoading = false;

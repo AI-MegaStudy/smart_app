@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/model/owner_profile_record.dart';
+import 'package:smart_app/repositories/owner_profile_repository.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class OwnerDetailPage extends StatefulWidget {
@@ -10,38 +12,83 @@ class OwnerDetailPage extends StatefulWidget {
 
 class _OwnerDetailPageState extends State<OwnerDetailPage> {
   final formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController(text: '김하늘');
-  final emailController = TextEditingController(text: 'owner@harvestslot.kr');
-  final passwordController = TextEditingController(text: 'owner1234');
-  final passwordConfirmController = TextEditingController(text: 'owner1234');
-  final phoneController = TextEditingController(text: '1022223344');
-  final businessController = TextEditingController(text: '3124567890');
+  final repository = OwnerProfileRepository();
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final businessController = TextEditingController();
+
+  OwnerProfileRecord? profile;
+  bool isLoading = false;
+  bool isSaving = false;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    passwordController.dispose();
-    passwordConfirmController.dispose();
     phoneController.dispose();
     businessController.dispose();
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _load() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    try {
+      final record = await repository.fetchProfile();
+      if (!mounted) return;
+      setState(() {
+        profile = record;
+        nameController.text = record.ownerName;
+        emailController.text = record.email;
+        phoneController.text = record.ownerPhone;
+        businessController.text = record.businessNumber ?? '';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    final current = profile;
+    if (current == null) {
+      showOwnerSnack(context, '저장할 점주 정보가 없습니다.');
+      return;
+    }
     if (!(formKey.currentState?.validate() ?? false)) return;
-    showConfirmAction(
-      context: context,
-      title: '내 정보 저장',
-      message: '입력한 내 정보로 저장할까요?',
-      confirmLabel: '확인',
-      onConfirm: () => showInfoAction(
-        context: context,
-        title: '내 정보 저장',
-        message: '저장이 완료되었습니다.',
-        onConfirm: () => Navigator.of(context).pop(),
-      ),
-    );
+
+    setState(() => isSaving = true);
+    try {
+      final updated = current.copyWith(
+        ownerName: nameController.text.trim(),
+        ownerPhone: phoneController.text.trim(),
+        businessNumber: businessController.text.trim().isEmpty
+            ? null
+            : businessController.text.trim(),
+      );
+      final saved = await repository.updateProfile(updated);
+      if (!mounted) return;
+      setState(() => profile = saved);
+      showOwnerSnack(context, '점주 정보를 저장했습니다.');
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
+    } finally {
+      if (mounted) setState(() => isSaving = false);
+    }
   }
 
   @override
@@ -55,7 +102,14 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
           ),
+          trailing: ActionChipIcon(
+            icon: Icons.refresh,
+            onPressed: isLoading ? null : _load,
+          ),
           children: [
+            if (isLoading) const LinearProgressIndicator(),
+            if (errorMessage != null)
+              NoticeBox(color: const Color(0xffFFE9E2), text: errorMessage!),
             LabeledField(
               label: '이름',
               value: '',
@@ -68,31 +122,8 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               value: '',
               controller: emailController,
               hintText: '이메일',
-              keyboardType: TextInputType.emailAddress,
+              readOnly: true,
               validator: emailValidator,
-            ),
-            LabeledField(
-              label: '비밀번호',
-              value: '',
-              controller: passwordController,
-              hintText: '비밀번호',
-              helperText: '영문과 숫자를 포함해 8~20자',
-              obscureText: true,
-              validator: passwordValidator,
-            ),
-            LabeledField(
-              label: '비밀번호 확인',
-              value: '',
-              controller: passwordConfirmController,
-              hintText: '비밀번호 확인',
-              obscureText: true,
-              validator: (value) {
-                final required = requiredValidator('비밀번호 확인', value);
-                if (required != null) return required;
-                return value == passwordController.text
-                    ? null
-                    : '비밀번호가 일치하지 않습니다.';
-              },
             ),
             LabeledField(
               label: '전화번호',
@@ -114,11 +145,15 @@ class _OwnerDetailPageState extends State<OwnerDetailPage> {
               inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: businessValidator,
             ),
+            const NoticeBox(
+              color: Color(0xffF4F7F1),
+              text: '이메일과 비밀번호 변경은 현재 백엔드 API 범위에 없어 읽기 전용입니다.',
+            ),
             DualActionBar(
               left: '취소',
-              right: '저장',
-              onLeftPressed: () => Navigator.of(context).pop(),
-              onRightPressed: _save,
+              right: isSaving ? '저장 중' : '저장',
+              onLeftPressed: isSaving ? null : () => Navigator.of(context).pop(),
+              onRightPressed: isSaving ? null : _save,
             ),
           ],
         ),

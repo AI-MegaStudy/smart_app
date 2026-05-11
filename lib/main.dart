@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_app/core/api_service.dart';
 import 'package:smart_app/repositories/dashboard_repository.dart';
 import 'package:smart_app/view/login_page.dart';
 import 'package:smart_app/vm/dashboard_viewmodel.dart';
+
+final appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   runApp(const OwnerApp());
@@ -13,6 +16,15 @@ class OwnerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ApiService.onUnauthorized = () {
+      final navigator = appNavigatorKey.currentState;
+      if (navigator == null) return;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    };
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -20,6 +32,7 @@ class OwnerApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: appNavigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'Harvest Slot 점주앱',
         theme: ThemeData(

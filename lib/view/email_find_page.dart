@@ -25,7 +25,7 @@ class _EmailFindPageState extends State<EmailFindPage> {
     showInfoAction(
       context: context,
       title: '이메일 찾기',
-      message: '가입 이메일은 owner@harvestslot.kr 입니다.',
+      message: '이메일 찾기 API가 아직 백엔드 최종 명세에 없습니다. 관리자 또는 고객센터 확인이 필요합니다.',
     );
   }
 
@@ -52,7 +52,7 @@ class _EmailFindPageState extends State<EmailFindPage> {
               label: '전화번호',
               value: '',
               controller: phoneController,
-              hintText: '전화번호',
+              hintText: '01012345678',
               keyboardType: TextInputType.number,
               maxLength: 11,
               inputFormatters: const [DigitsOnlyInputFormatter()],
@@ -60,7 +60,7 @@ class _EmailFindPageState extends State<EmailFindPage> {
             ),
             DualActionBar(
               left: '취소',
-              right: '찾기',
+              right: '확인',
               onLeftPressed: () => Navigator.of(context).pop(),
               onRightPressed: _find,
             ),

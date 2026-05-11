@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/repositories/auth_repository.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/farm_detail_page.dart';
 import 'package:smart_app/view/login_page.dart';
@@ -15,15 +16,15 @@ class ProfilePage extends StatelessWidget {
       subtitle: '점주와 농장 정보',
       children: [
         const HeroPanel(
-          eyebrow: '충주 햇살농원',
-          title: '김하늘 점주',
+          eyebrow: '점주 관리',
+          title: '내 계정',
           icon: Icons.badge_outlined,
           compact: true,
         ),
         ProfileListTile(
           icon: Icons.person_outline,
           title: '내 정보 수정',
-          subtitle: '이름, 이메일, 비밀번호, 전화번호, 사업자번호',
+          subtitle: '이름, 이메일, 전화번호, 사업자번호',
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const OwnerDetailPage())),
@@ -31,7 +32,7 @@ class ProfilePage extends StatelessWidget {
         ProfileListTile(
           icon: Icons.warehouse_outlined,
           title: '농장 정보 수정',
-          subtitle: '농장명, 주소, 농장 소개, 배송 정책, 반품 정책',
+          subtitle: '농장명, 주소, 소개, 배송 정책, 반품 정책',
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const FarmDetailPage())),
@@ -46,6 +47,7 @@ class ProfilePage extends StatelessWidget {
               message: '현재 계정에서 로그아웃할까요?',
               confirmLabel: '확인',
               onConfirm: () {
+                AuthRepository().logout();
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginPage()),
                   (route) => false,
@@ -58,22 +60,10 @@ class ProfilePage extends StatelessWidget {
           label: '회원 탈퇴',
           backgroundColor: Colors.red,
           onPressed: () {
-            showConfirmAction(
+            showInfoAction(
               context: context,
               title: '회원 탈퇴',
-              message: '회원 탈퇴를 진행할까요?',
-              confirmLabel: '확인',
-              onConfirm: () => showInfoAction(
-                context: context,
-                title: '회원 탈퇴',
-                message: '회원 탈퇴가 완료되었습니다.',
-                onConfirm: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-                  );
-                },
-              ),
+              message: '회원 탈퇴 API는 아직 백엔드 명세에 없습니다.',
             );
           },
         ),

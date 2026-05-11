@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_app/util/app_colors.dart';
@@ -20,7 +22,7 @@ Future<void> showConfirmAction({
   required String message,
   String confirmLabel = '확인',
   bool destructive = false,
-  required VoidCallback onConfirm,
+  required FutureOr<void> Function() onConfirm,
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -55,7 +57,7 @@ Future<void> showConfirmAction({
     },
   );
   if (confirmed == true) {
-    onConfirm();
+    await onConfirm();
   }
 }
 

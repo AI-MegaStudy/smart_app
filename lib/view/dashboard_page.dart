@@ -36,37 +36,48 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dashboard = context.watch<DashboardViewModel>().dashboard;
+    final viewModel = context.watch<DashboardViewModel>();
+    final dashboard = viewModel.dashboard;
 
     return AppScaffold(
-      title: '안녕하세요, 김하늘 점주님',
-      subtitle: '충주 햇살농원',
+      title: '점주 대시보드',
+      subtitle: '주문, 발주, 선별, 배송 현황',
+      trailing: ActionChipIcon(
+        icon: Icons.refresh,
+        onPressed: viewModel.isLoading ? null : viewModel.loadDashboard,
+      ),
       children: [
         _MlReferenceCard(onPressed: () => _open(const HarvestSlotPage())),
+        if (viewModel.isLoading) const LinearProgressIndicator(),
+        if (viewModel.errorMessage != null)
+          NoticeBox(
+            color: const Color(0xffFFE9E2),
+            text: viewModel.errorMessage!,
+          ),
         const SectionHeader(title: '업무 현황'),
         GridCards(
           children: [
             MetricCard(
               icon: Icons.center_focus_strong_outlined,
-              value: '${dashboard?.inspectionWaiting ?? 7}',
+              value: dashboard == null ? '-' : '${dashboard.inspectionWaiting}',
               label: '선별 대기',
               onTap: () => _open(const QualityPage()),
             ),
             MetricCard(
               icon: Icons.assignment_turned_in_outlined,
-              value: '${dashboard?.newProcurements ?? 4}',
+              value: dashboard == null ? '-' : '${dashboard.newProcurements}',
               label: '신규 발주',
               onTap: () => _open(const ProcurementPage()),
             ),
             MetricCard(
               icon: Icons.local_shipping_outlined,
-              value: '${dashboard?.readyToShip ?? 3}',
+              value: dashboard == null ? '-' : '${dashboard.readyToShip}',
               label: '배송 준비',
               onTap: () => _open(const ShipmentPage()),
             ),
             MetricCard(
               icon: Icons.keyboard_return_outlined,
-              value: '2',
+              value: dashboard == null ? '-' : '${dashboard.returnRequests}',
               label: '반품 요청',
               onTap: () => _open(const ReturnPage()),
             ),

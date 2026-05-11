@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/model/farm_record.dart';
 import 'package:smart_app/model/product_record.dart';
-import 'package:smart_app/util/app_colors.dart';
+import 'package:smart_app/repositories/farm_repository.dart';
+import 'package:smart_app/repositories/product_repository.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class ProductAddPage extends StatefulWidget {
@@ -12,55 +14,104 @@ class ProductAddPage extends StatefulWidget {
 
 class _ProductAddPageState extends State<ProductAddPage> {
   final formKey = GlobalKey<FormState>();
+  final repository = ProductRepository();
+  final farmRepository = FarmRepository();
+  final productNameController = TextEditingController();
+  final varietyController = TextEditingController();
   final packageController = TextEditingController();
   final priceController = TextEditingController();
-  final stockController = TextEditingController();
-  String productName = '';
-  String status = '';
+  final descriptionController = TextEditingController();
+
+  List<FarmRecord> farms = [];
+  FarmRecord? selectedFarm;
+  String fruitType = 'apple';
+  String status = '준비 중';
+  bool isLoadingFarms = false;
+  bool isSaving = false;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFarms();
+  }
 
   @override
   void dispose() {
+    productNameController.dispose();
+    varietyController.dispose();
     packageController.dispose();
     priceController.dispose();
-    stockController.dispose();
+    descriptionController.dispose();
     super.dispose();
   }
 
-  void _save() {
-    if (!(formKey.currentState?.validate() ?? false)) {
-      showOwnerSnack(context, '모든 항목을 입력한 뒤 등록하세요.');
-      return;
+  Future<void> _loadFarms() async {
+    setState(() {
+      isLoadingFarms = true;
+      errorMessage = null;
+    });
+    try {
+      final records = await farmRepository.fetchMyFarms();
+      if (!mounted) return;
+      setState(() {
+        farms = records;
+        selectedFarm = records.isEmpty ? null : records.first;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => isLoadingFarms = false);
     }
-    showConfirmAction(
-      context: context,
-      title: '상품 등록',
-      message: '새 상품을 등록할까요?',
-      confirmLabel: '등록',
-      onConfirm: () {
-        final product = ProductRecord(
-          productName,
-          '${packageController.text}kg 박스',
-          int.parse(priceController.text),
-          int.parse(stockController.text),
-          status,
-          _statusColor(status),
-        );
-        showOwnerSnack(context, '상품을 등록했습니다.');
-        Navigator.of(context).pop(product);
-      },
-    );
   }
 
-  Color _statusColor(String status) {
-    return switch (status) {
-      '판매 중' => AppColors.mint,
-      '준비 중' => AppColors.yellow,
-      _ => const Color(0xffFFE1DD),
-    };
+  Future<void> _save() async {
+    final farm = selectedFarm;
+    if (farm == null) {
+      showOwnerSnack(context, '상품을 등록할 농장을 선택하세요.');
+      return;
+    }
+    if (!(formKey.currentState?.validate() ?? false)) {
+      showOwnerSnack(context, '모든 필수 항목을 입력한 뒤 등록하세요.');
+      return;
+    }
+
+    setState(() => isSaving = true);
+    try {
+      final statusCode = ProductRecord.statusCodeFromLabel(status);
+      final product = ProductRecord(
+        productNameController.text.trim(),
+        '${packageController.text.trim()}kg 박스',
+        int.parse(priceController.text.trim()),
+        0,
+        ProductRecord.statusLabel(statusCode),
+        ProductRecord.statusColor(statusCode),
+        farmId: farm.farmId,
+        fruitType: fruitType,
+        variety: varietyController.text.trim(),
+        packageUnitKg: double.parse(packageController.text.trim()),
+        statusCode: statusCode,
+        description: descriptionController.text.trim().isEmpty
+            ? null
+            : descriptionController.text.trim(),
+      );
+      final created = await repository.createProduct(product);
+      if (!mounted) return;
+      showOwnerSnack(context, '상품을 등록했습니다.');
+      Navigator.of(context).pop(created);
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
+    } finally {
+      if (mounted) setState(() => isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final farmLabel = selectedFarm?.farmName ?? '';
+
     return Scaffold(
       body: Form(
         key: formKey,
@@ -70,22 +121,60 @@ class _ProductAddPageState extends State<ProductAddPage> {
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
           ),
+          trailing: ActionChipIcon(
+            icon: Icons.refresh,
+            onPressed: isLoadingFarms ? null : _loadFarms,
+          ),
           children: [
-            LabeledDropdown(
+            if (isLoadingFarms) const LinearProgressIndicator(),
+            if (errorMessage != null)
+              NoticeBox(color: const Color(0xffFFE9E2), text: errorMessage!),
+            if (farms.isEmpty)
+              const NoticeBox(
+                color: Color(0xffFFE9E2),
+                text:
+                    '등록 가능한 농장이 없습니다. 현재 최종 백엔드 명세에는 농장 생성 API가 없어 상품 등록을 진행할 수 없습니다.',
+              )
+            else
+              LabeledDropdown(
+                label: '농장',
+                value: farmLabel,
+                items: [for (final farm in farms) farm.farmName],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    selectedFarm = farms.firstWhere(
+                      (farm) => farm.farmName == value,
+                      orElse: () => farms.first,
+                    );
+                  });
+                },
+              ),
+            LabeledField(
               label: '상품명',
-              value: productName,
-              items: const ['양광 사과', '부사 사과'],
+              value: '',
+              controller: productNameController,
+              hintText: '예: 양광 사과',
+            ),
+            LabeledDropdown(
+              label: '품목',
+              value: fruitType,
+              items: const ['apple', 'pear', 'peach', 'grape'],
               onChanged: (value) {
-                if (value != null) {
-                  setState(() => productName = value);
-                }
+                if (value != null) setState(() => fruitType = value);
               },
+            ),
+            LabeledField(
+              label: '품종',
+              value: '',
+              controller: varietyController,
+              hintText: '예: 양광',
             ),
             LabeledField(
               label: '포장 단위',
               value: '',
               controller: packageController,
-              hintText: '포장 단위',
+              hintText: '5',
               keyboardType: TextInputType.number,
               inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
@@ -93,7 +182,7 @@ class _ProductAddPageState extends State<ProductAddPage> {
                 if (required != null) return required;
                 return RegExp(r'^\d+$').hasMatch(text!.trim())
                     ? null
-                    : '포장 단위에는 숫자만 입력하세요.';
+                    : '포장 단위는 숫자로 입력하세요.';
               },
               suffixText: 'kg 박스',
             ),
@@ -101,7 +190,7 @@ class _ProductAddPageState extends State<ProductAddPage> {
               label: '기본 판매가',
               value: '',
               controller: priceController,
-              hintText: '기본 판매가',
+              hintText: '39000',
               keyboardType: TextInputType.number,
               inputFormatters: const [DigitsOnlyInputFormatter()],
               validator: (text) {
@@ -109,41 +198,29 @@ class _ProductAddPageState extends State<ProductAddPage> {
                 if (required != null) return required;
                 return RegExp(r'^\d+$').hasMatch(text!.trim())
                     ? null
-                    : '기본 판매가에는 숫자만 입력하세요.';
+                    : '기본 판매가는 숫자로 입력하세요.';
               },
               suffixText: '원',
-            ),
-            LabeledField(
-              label: '상품 수량',
-              value: '',
-              controller: stockController,
-              hintText: '상품 수량',
-              keyboardType: TextInputType.number,
-              inputFormatters: const [DigitsOnlyInputFormatter()],
-              validator: (text) {
-                final required = requiredValidator('상품 수량', text);
-                if (required != null) return required;
-                return RegExp(r'^\d+$').hasMatch(text!.trim())
-                    ? null
-                    : '상품 수량에는 숫자만 입력하세요.';
-              },
-              suffixText: '박스',
             ),
             LabeledDropdown(
               label: '판매 상태',
               value: status,
               items: const ['판매 중', '준비 중', '판매 중지'],
               onChanged: (value) {
-                if (value != null) {
-                  setState(() => status = value);
-                }
+                if (value != null) setState(() => status = value);
               },
+            ),
+            LabeledBox(
+              label: '상품 설명',
+              value: '',
+              controller: descriptionController,
+              required: false,
             ),
             DualActionBar(
               left: '취소',
-              right: '등록',
-              onLeftPressed: () => Navigator.of(context).pop(),
-              onRightPressed: _save,
+              right: isSaving ? '등록 중' : '등록',
+              onLeftPressed: isSaving ? null : () => Navigator.of(context).pop(),
+              onRightPressed: isSaving ? null : _save,
             ),
           ],
         ),
