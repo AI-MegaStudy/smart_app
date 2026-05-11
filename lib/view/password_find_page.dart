@@ -25,7 +25,7 @@ class _PasswordFindPageState extends State<PasswordFindPage> {
     showInfoAction(
       context: context,
       title: '비밀번호 찾기',
-      message: '비밀번호 재설정 안내를 발송했습니다.',
+      message: '비밀번호 재설정 API가 아직 백엔드 최종 명세에 없습니다. 이메일 인증의 RESET_PASSWORD 목적을 활용한 API 확정이 필요합니다.',
     );
   }
 
@@ -52,13 +52,13 @@ class _PasswordFindPageState extends State<PasswordFindPage> {
               label: '이메일',
               value: '',
               controller: emailController,
-              hintText: '이메일',
+              hintText: 'owner@example.com',
               keyboardType: TextInputType.emailAddress,
               validator: emailValidator,
             ),
             DualActionBar(
               left: '취소',
-              right: '찾기',
+              right: '확인',
               onLeftPressed: () => Navigator.of(context).pop(),
               onRightPressed: _find,
             ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/model/owner_order_record.dart';
+import 'package:smart_app/repositories/order_repository.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
@@ -10,9 +12,20 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  final repository = OrderRepository();
   final searchController = TextEditingController();
+
   String filter = '전체';
   bool showSearch = false;
+  bool isLoading = false;
+  String? errorMessage;
+  List<OwnerOrderRecord> records = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -20,18 +33,35 @@ class _OrdersPageState extends State<OrdersPage> {
     super.dispose();
   }
 
+  Future<void> _load() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    try {
+      final nextRecords = await repository.fetchOwnerOrderStatus();
+      if (!mounted) return;
+      setState(() => records = nextRecords);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = searchController.text.trim().toLowerCase();
-    final visible = sampleOrders.where((order) {
-      final matchesFilter = filter == '전체' || order.status == filter;
+    final visible = records.where((record) {
+      final matchesFilter = filter == '전체' || record.statusLabel == filter;
       final matchesQuery =
           query.isEmpty ||
-          '${order.title} ${order.subtitle} ${order.status}'
+          '${record.title} ${record.subtitle} ${record.statusLabel}'
               .toLowerCase()
               .contains(query);
       return matchesFilter && matchesQuery;
-    }).toList()..sort((a, b) => a.time.compareTo(b.time));
+    }).toList();
 
     return Scaffold(
       body: AppScaffold(
@@ -40,16 +70,24 @@ class _OrdersPageState extends State<OrdersPage> {
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: ActionChipIcon(
-          icon: showSearch ? Icons.close : Icons.search,
-          onPressed: () {
-            setState(() {
-              showSearch = !showSearch;
-              if (!showSearch) {
-                searchController.clear();
-              }
-            });
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ActionChipIcon(
+              icon: Icons.refresh,
+              onPressed: isLoading ? null : _load,
+            ),
+            const SizedBox(width: 6),
+            ActionChipIcon(
+              icon: showSearch ? Icons.close : Icons.search,
+              onPressed: () {
+                setState(() {
+                  showSearch = !showSearch;
+                  if (!showSearch) searchController.clear();
+                });
+              },
+            ),
+          ],
         ),
         children: [
           if (showSearch)
@@ -71,68 +109,28 @@ class _OrdersPageState extends State<OrdersPage> {
                       ),
               ),
             ),
+          if (isLoading) const LinearProgressIndicator(),
+          if (errorMessage != null)
+            NoticeBox(color: const Color(0xffFFE9E2), text: errorMessage!),
           FilterTabs(
-            labels: const ['전체', '주문 완료', '결제 완료'],
+            labels: const ['전체', '예약 완료', '결제 완료', '배송 준비', '배송 완료'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
-          for (final order in visible)
+          for (final record in visible)
             DataTile(
-              icon: Icons.receipt_long_outlined,
-              title: order.title,
-              subtitle: order.subtitle,
-              badge: order.status,
-              badgeColor: order.color,
+              icon: record.source == 'reservation'
+                  ? Icons.event_available_outlined
+                  : Icons.receipt_long_outlined,
+              title: record.title,
+              subtitle: record.subtitle,
+              badge: record.statusLabel,
+              badgeColor: record.color,
             ),
-          if (visible.isEmpty)
+          if (!isLoading && visible.isEmpty)
             const NoticeBox(color: AppColors.yellow, text: '검색 결과가 없습니다.'),
         ],
       ),
     );
   }
-}
-
-const sampleOrders = [
-  OrderRecord(
-    '홍길동 · 양광 사과 5kg',
-    '2박스 · 78,000원 · 2026-05-07 09:20',
-    '결제 완료',
-    AppColors.blue,
-    '09:20',
-    '78,000원',
-  ),
-  OrderRecord(
-    '김민지 · 부사 사과 3kg',
-    '1박스 · 32,000원 · 2026-05-07 09:45',
-    '주문 완료',
-    AppColors.yellow,
-    '09:45',
-    '32,000원',
-  ),
-  OrderRecord(
-    '박서준 · 양광 사과 7kg',
-    '1박스 · 68,000원 · 2026-05-07 12:10',
-    '결제 완료',
-    AppColors.blue,
-    '12:10',
-    '68,000원',
-  ),
-];
-
-class OrderRecord {
-  final String title;
-  final String subtitle;
-  final String status;
-  final Color color;
-  final String time;
-  final String amount;
-
-  const OrderRecord(
-    this.title,
-    this.subtitle,
-    this.status,
-    this.color,
-    this.time,
-    this.amount,
-  );
 }

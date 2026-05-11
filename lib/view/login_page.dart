@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/repositories/auth_repository.dart';
 import 'package:smart_app/view/email_find_page.dart';
 import 'package:smart_app/view/home.dart';
 import 'package:smart_app/view/password_find_page.dart';
@@ -14,9 +15,12 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController(text: 'owner@harvestslot.kr');
-  final passwordController = TextEditingController(text: 'owner1234');
+  final authRepository = AuthRepository();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
   String? loginError;
+  bool isSubmitting = false;
 
   @override
   void dispose() {
@@ -25,20 +29,53 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     setState(() => loginError = null);
     if (!(formKey.currentState?.validate() ?? false)) return;
-    final ok =
-        emailController.text.trim() == 'owner@harvestslot.kr' &&
-        passwordController.text.trim() == 'owner1234';
-    if (!ok) {
-      setState(() => loginError = '이메일 또는 비밀번호가 일치하지 않습니다.');
+
+    setState(() => isSubmitting = true);
+    try {
+      await authRepository.login(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Home()),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => loginError = error.toString());
       formKey.currentState?.validate();
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => isSubmitting = false);
+      }
     }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const Home()),
+  }
+
+  String? _emailFieldValidator(String? value) {
+    return loginError ?? emailValidator(value);
+  }
+
+  String? _passwordFieldValidator(String? value) {
+    return loginError == null ? passwordValidator(value) : '';
+  }
+
+  void _clearLoginErrorOnEdit(String _) {
+    if (loginError == null) return;
+    setState(() => loginError = null);
+  }
+
+  Widget _loginButtonChild() {
+    if (!isSubmitting) {
+      return const Text('로그인');
+    }
+    return const SizedBox(
+      width: 20,
+      height: 20,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 
@@ -48,6 +85,7 @@ class _LoginPageState extends State<LoginPage> {
       color: Colors.white,
       fontWeight: FontWeight.w700,
     );
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -71,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
                               : 170,
                         ),
                         const Text(
-                          '오늘 수확 운영을 시작하세요',
+                          '수확 운영을 시작하세요',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 28,
@@ -81,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 10),
                         const Text(
-                          '충주 햇살농원의 주문, 발주, 배송 현황을 이어서 관리합니다.',
+                          '주문, 발주, 배송 현황을 한곳에서 관리합니다.',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 15,
@@ -93,9 +131,9 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
-                          maxLength: 20,
-                          validator: (value) =>
-                              loginError ?? emailValidator(value),
+                          maxLength: 40,
+                          validator: _emailFieldValidator,
+                          onChanged: _clearLoginErrorOnEdit,
                           decoration: const InputDecoration(
                             hintText: '이메일',
                             counterText: '',
@@ -106,8 +144,9 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: passwordController,
                           obscureText: true,
-                          maxLength: 20,
-                          validator: passwordValidator,
+                          maxLength: 40,
+                          validator: _passwordFieldValidator,
+                          onChanged: _clearLoginErrorOnEdit,
                           decoration: const InputDecoration(
                             hintText: '비밀번호',
                             counterText: '',
@@ -116,8 +155,8 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 28),
                         FilledButton(
-                          onPressed: _login,
-                          child: const Text('로그인'),
+                          onPressed: isSubmitting ? null : _login,
+                          child: _loginButtonChild(),
                         ),
                         const SizedBox(height: 10),
                         Wrap(

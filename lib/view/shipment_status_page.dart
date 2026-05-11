@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smart_app/util/app_colors.dart';
+import 'package:smart_app/repositories/shipment_repository.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
 
 class ShipmentStatusPage extends StatefulWidget {
@@ -10,14 +10,80 @@ class ShipmentStatusPage extends StatefulWidget {
 }
 
 class _ShipmentStatusPageState extends State<ShipmentStatusPage> {
+  final repository = ShipmentRepository();
   final searchController = TextEditingController();
   String filter = '전체';
   bool showSearch = false;
+  bool isWorking = false;
 
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _markDelivered(ShipmentRecord item) async {
+    final shipmentId = item.shipmentId;
+    if (shipmentId == null) {
+      showOwnerSnack(context, '서버 shipment_id가 없어 상태를 변경할 수 없습니다.');
+      return;
+    }
+    if (item.status == '배송 완료') {
+      showOwnerSnack(context, '이미 배송 완료 상태입니다.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('배송 완료 처리'),
+        content: Text('${item.title} 배송을 완료 처리할까요?'),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('완료 처리'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => isWorking = true);
+    try {
+      final updated = await repository.updateStatus(
+        shipmentId: shipmentId,
+        shipmentStatus: 'DELIVERED',
+      );
+      if (!mounted) return;
+      final index = shipmentStatusRecords.indexOf(item);
+      if (index >= 0) {
+        shipmentStatusRecords[index] = item.copyWith(
+          status: updated.statusLabel,
+          color: updated.color,
+        );
+      }
+      setState(() {});
+      showOwnerSnack(context, '배송 완료로 변경했습니다.');
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
+    } finally {
+      if (mounted) setState(() => isWorking = false);
+    }
   }
 
   @override
@@ -45,13 +111,12 @@ class _ShipmentStatusPageState extends State<ShipmentStatusPage> {
           onPressed: () {
             setState(() {
               showSearch = !showSearch;
-              if (!showSearch) {
-                searchController.clear();
-              }
+              if (!showSearch) searchController.clear();
             });
           },
         ),
         children: [
+          if (isWorking) const LinearProgressIndicator(),
           if (showSearch)
             TextField(
               controller: searchController,
@@ -74,6 +139,14 @@ class _ShipmentStatusPageState extends State<ShipmentStatusPage> {
               subtitle: item.subtitle,
               badge: item.status,
               badgeColor: item.color,
+              onTap: () => _markDelivered(item),
+              showChevron: item.shipmentId != null,
+            ),
+          if (!isWorking && visible.isEmpty)
+            const NoticeBox(
+              color: Color(0xffFFF4CC),
+              text:
+                  '등록된 배송 현황이 없습니다. 현재 최종 백엔드 명세에는 점주용 배송 목록 조회 API가 없어 앱에서 방금 등록한 배송만 표시할 수 있습니다.',
             ),
         ],
       ),
@@ -81,32 +154,33 @@ class _ShipmentStatusPageState extends State<ShipmentStatusPage> {
   }
 }
 
-final shipmentStatusRecords = <ShipmentRecord>[
-  const ShipmentRecord(
-    '홍길동 · 양광 사과 5kg · 2박스',
-    'CJ대한통운 · 589112024810',
-    '배송 중',
-    AppColors.mint,
-  ),
-  const ShipmentRecord(
-    '김민지 · 부사 사과 3kg · 1박스',
-    '우체국택배 · 451290880221',
-    '배송 대기',
-    AppColors.yellow,
-  ),
-  const ShipmentRecord(
-    '박서준 · 양광 사과 7kg · 1박스',
-    '롯데택배 · 123412341234',
-    '배송 완료',
-    AppColors.blue,
-  ),
-];
+final shipmentStatusRecords = <ShipmentRecord>[];
 
 class ShipmentRecord {
   final String title;
   final String subtitle;
   final String status;
   final Color color;
+  final int? shipmentId;
 
-  const ShipmentRecord(this.title, this.subtitle, this.status, this.color);
+  const ShipmentRecord(
+    this.title,
+    this.subtitle,
+    this.status,
+    this.color, {
+    this.shipmentId,
+  });
+
+  ShipmentRecord copyWith({
+    String? status,
+    Color? color,
+  }) {
+    return ShipmentRecord(
+      title,
+      subtitle,
+      status ?? this.status,
+      color ?? this.color,
+      shipmentId: shipmentId,
+    );
+  }
 }

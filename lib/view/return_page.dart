@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_app/model/return_record.dart';
+import 'package:smart_app/repositories/return_repository.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/return_status_page.dart';
 import 'package:smart_app/widgets/owner_widgets.dart';
@@ -11,47 +13,40 @@ class ReturnPage extends StatefulWidget {
 }
 
 class _ReturnPageState extends State<ReturnPage> {
+  final repository = ReturnRepository();
   final searchController = TextEditingController();
   bool showSearch = false;
+  bool isLoading = false;
+  String? errorMessage;
+  List<ReturnRequestRecord> requests = [];
 
-  final requests = [
-    const _ReturnRequest(
-      '홍길동',
-      '배송 중 박스 파손',
-      '양광 사과 5kg · 2박스',
-      '2026-05-07 09:30',
-      '39000',
-      '배송 중 박스 파손으로 상품이 눌렸습니다.',
-      '접수',
-      2,
-    ),
-    const _ReturnRequest(
-      '김민지',
-      '상품 멍 확인',
-      '부사 사과 3kg · 1박스',
-      '2026-05-07 10:10',
-      '32000',
-      '수령 직후 멍이 보여 반품을 요청합니다.',
-      '접수',
-      1,
-    ),
-    const _ReturnRequest(
-      '박서준',
-      '수량 오배송',
-      '양광 사과 7kg · 1박스',
-      '2026-05-07 11:40',
-      '68000',
-      '주문한 박스 수와 배송된 박스 수가 다릅니다.',
-      '접수',
-      0,
-    ),
-  ].where((request) => !_handledReturnIds.contains(request.id)).toList()
-    ..sort((a, b) => a.requestedAt.compareTo(b.requestedAt));
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    try {
+      final records = await repository.fetchReturns();
+      if (!mounted) return;
+      setState(() => requests = records);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -69,16 +64,21 @@ class _ReturnPageState extends State<ReturnPage> {
           icon: Icons.arrow_back,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: ActionChipIcon(
-          icon: showSearch ? Icons.close : Icons.search,
-          onPressed: () {
-            setState(() {
-              showSearch = !showSearch;
-              if (!showSearch) {
-                searchController.clear();
-              }
-            });
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ActionChipIcon(icon: Icons.refresh, onPressed: isLoading ? null : _load),
+            const SizedBox(width: 6),
+            ActionChipIcon(
+              icon: showSearch ? Icons.close : Icons.search,
+              onPressed: () {
+                setState(() {
+                  showSearch = !showSearch;
+                  if (!showSearch) searchController.clear();
+                });
+              },
+            ),
+          ],
         ),
         children: [
           if (showSearch)
@@ -91,33 +91,38 @@ class _ReturnPageState extends State<ReturnPage> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
+          if (isLoading) const LinearProgressIndicator(),
+          if (errorMessage != null)
+            NoticeBox(color: const Color(0xffFFE9E2), text: errorMessage!),
           for (final request in visible)
             _ReturnRequestTile(
               request: request,
               onTap: () async {
-                final handled = await Navigator.of(context).push<bool>(
+                final handled = await Navigator.of(context).push<ReturnRequestRecord>(
                   MaterialPageRoute(
                     builder: (_) => _ReturnDetailPage(request: request),
                   ),
                 );
-                if (handled == true) {
+                if (handled != null) {
                   setState(() {
-                    requests.remove(request);
-                    _handledReturnIds.add(request.id);
+                    final index = requests.indexWhere(
+                      (item) => item.returnRequestId == handled.returnRequestId,
+                    );
+                    if (index >= 0) requests[index] = handled;
                   });
                 }
               },
             ),
+          if (!isLoading && visible.isEmpty)
+            const NoticeBox(color: AppColors.yellow, text: '반품 요청이 없습니다.'),
         ],
       ),
     );
   }
 }
 
-final _handledReturnIds = <String>{};
-
 class _ReturnRequestTile extends StatelessWidget {
-  final _ReturnRequest request;
+  final ReturnRequestRecord request;
   final VoidCallback onTap;
 
   const _ReturnRequestTile({required this.request, required this.onTap});
@@ -128,8 +133,8 @@ class _ReturnRequestTile extends StatelessWidget {
       icon: Icons.keyboard_return,
       title: request.title,
       subtitle: request.subtitle,
-      badge: request.status,
-      badgeColor: AppColors.mint,
+      badge: request.statusLabel,
+      badgeColor: request.color,
       iconBackground: AppColors.mint,
       iconColor: AppColors.green,
       onTap: onTap,
@@ -139,7 +144,7 @@ class _ReturnRequestTile extends StatelessWidget {
 }
 
 class _ReturnDetailPage extends StatefulWidget {
-  final _ReturnRequest request;
+  final ReturnRequestRecord request;
 
   const _ReturnDetailPage({required this.request});
 
@@ -149,14 +154,18 @@ class _ReturnDetailPage extends StatefulWidget {
 
 class _ReturnDetailPageState extends State<_ReturnDetailPage> {
   final formKey = GlobalKey<FormState>();
+  final repository = ReturnRepository();
   late final TextEditingController detailController;
   late final TextEditingController approvalAmountController;
+  bool isWorking = false;
 
   @override
   void initState() {
     super.initState();
-    detailController = TextEditingController(text: widget.request.detailReason);
-    approvalAmountController = TextEditingController(text: widget.request.amount);
+    detailController = TextEditingController(text: widget.request.reasonDetail);
+    approvalAmountController = TextEditingController(
+      text: widget.request.requestedAmount.toString(),
+    );
   }
 
   @override
@@ -166,7 +175,7 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
     super.dispose();
   }
 
-  void _confirmApprove(BuildContext context) {
+  Future<void> _confirmApprove(BuildContext context) async {
     if (!(formKey.currentState?.validate() ?? false)) {
       showOwnerSnack(context, '모든 항목을 입력해야 승인 가능합니다.');
       return;
@@ -176,19 +185,36 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
       title: '반품 요청 승인',
       message: '반품 · 환불 상태를 승인 처리할까요?',
       confirmLabel: '승인',
-      onConfirm: () {
-        returnStatusRecords.add(
-          ReturnStatusRecord(
-            widget.request.requestedAt,
-            '${widget.request.customerName} · ${widget.request.productName} · ${approvalAmountController.text}원',
-            '승인',
-            AppColors.mint,
-          ),
-        );
-        showOwnerSnack(context, '반품 현황을 갱신했습니다.');
-        Navigator.of(context).pop(true);
-      },
+      onConfirm: _approve,
     );
+  }
+
+  Future<void> _approve() async {
+    setState(() => isWorking = true);
+    try {
+      final updated = await repository.approve(
+        request: widget.request,
+        approvedAmount: int.parse(approvalAmountController.text.trim()),
+      );
+      if (!mounted) return;
+      returnStatusRecords.insert(
+        0,
+        ReturnStatusRecord(
+          updated.requestedAt,
+          '${updated.customerName} · ${updated.productName} · ${updated.approvedAmount}원',
+          updated.statusLabel,
+          updated.color,
+          returnRequestId: updated.returnRequestId,
+        ),
+      );
+      showOwnerSnack(context, '반품 현황을 갱신했습니다.');
+      Navigator.of(context).pop(updated);
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
+    } finally {
+      if (mounted) setState(() => isWorking = false);
+    }
   }
 
   Future<void> _confirmReject(BuildContext context) async {
@@ -203,21 +229,13 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
               content: DropdownButtonFormField<String>(
                 initialValue: reason,
                 items: const [
-                  DropdownMenuItem(value: '', child: Text('선택하세요.')),
+                  DropdownMenuItem(value: '', child: Text('선택하세요')),
                   DropdownMenuItem(value: '고객 단순 변심', child: Text('고객 단순 변심')),
-                  DropdownMenuItem(
-                    value: '첨부 이미지 확인 불가',
-                    child: Text('첨부 이미지 확인 불가'),
-                  ),
-                  DropdownMenuItem(
-                    value: '환불 정책 대상 아님',
-                    child: Text('환불 정책 대상 아님'),
-                  ),
+                  DropdownMenuItem(value: '첨부 이미지 확인 불가', child: Text('첨부 이미지 확인 불가')),
+                  DropdownMenuItem(value: '환불 정책 대상 아님', child: Text('환불 정책 대상 아님')),
                 ],
                 onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() => reason = value);
-                  }
+                  if (value != null) setDialogState(() => reason = value);
                 },
                 decoration: const InputDecoration(labelText: '거절 사유'),
               ),
@@ -247,17 +265,34 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
         );
       },
     );
-    if (confirmed == true && context.mounted) {
-      returnStatusRecords.add(
+    if (confirmed == true) await _reject(reason);
+  }
+
+  Future<void> _reject(String reason) async {
+    setState(() => isWorking = true);
+    try {
+      final updated = await repository.reject(
+        request: widget.request,
+        reason: reason,
+      );
+      if (!mounted) return;
+      returnStatusRecords.insert(
+        0,
         ReturnStatusRecord(
-          widget.request.requestedAt,
-          '${widget.request.customerName} · ${widget.request.productName} · $reason',
-          '거절',
-          AppColors.yellow,
+          updated.requestedAt,
+          '${updated.customerName} · ${updated.productName} · $reason',
+          updated.statusLabel,
+          updated.color,
+          returnRequestId: updated.returnRequestId,
         ),
       );
       showOwnerSnack(context, '반품 현황을 갱신했습니다.');
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(updated);
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
+    } finally {
+      if (mounted) setState(() => isWorking = false);
     }
   }
 
@@ -277,24 +312,24 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
               icon: Icons.keyboard_return,
               title: widget.request.title,
               subtitle: widget.request.subtitle,
-              badge: widget.request.status,
-              badgeColor: const Color(0xffFFE1DD),
+              badge: widget.request.statusLabel,
+              badgeColor: widget.request.color,
               iconBackground: const Color(0xffFFE1DD),
               iconColor: const Color(0xffB64033),
             ),
             LabeledField(
               label: '구매 상품 금액',
-              value: '${widget.request.amount}원',
+              value: '${widget.request.requestedAmount}원',
               enabled: false,
             ),
             LabeledField(
               label: '고객 요청 사유',
-              value: widget.request.reason,
+              value: ReturnRequestRecord.reasonLabel(widget.request.reasonCode),
               enabled: false,
             ),
             LabeledBox(
               label: '상세 사유',
-              value: widget.request.detailReason,
+              value: widget.request.reasonDetail,
               controller: detailController,
               enabled: false,
             ),
@@ -317,10 +352,10 @@ class _ReturnDetailPageState extends State<_ReturnDetailPage> {
               suffixText: '원',
             ),
             DualActionBar(
-              left: '거절',
-              right: '승인',
-              onLeftPressed: () => _confirmReject(context),
-              onRightPressed: () => _confirmApprove(context),
+              left: isWorking ? '처리 중' : '거절',
+              right: isWorking ? '처리 중' : '승인',
+              onLeftPressed: isWorking ? null : () => _confirmReject(context),
+              onRightPressed: isWorking ? null : () => _confirmApprove(context),
             ),
           ],
         ),
@@ -360,30 +395,4 @@ class _CustomerImagePreview extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ReturnRequest {
-  final String customerName;
-  final String reason;
-  final String productName;
-  final String requestedAt;
-  final String amount;
-  final String detailReason;
-  final String status;
-  final int photoCount;
-
-  const _ReturnRequest(
-    this.customerName,
-    this.reason,
-    this.productName,
-    this.requestedAt,
-    this.amount,
-    this.detailReason,
-    this.status,
-    this.photoCount,
-  );
-
-  String get id => '$customerName-$requestedAt';
-  String get title => '$customerName · $reason';
-  String get subtitle => '$productName · $requestedAt';
 }

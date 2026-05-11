@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_app/model/product_record.dart';
+import 'package:smart_app/repositories/product_repository.dart';
 import 'package:smart_app/util/app_colors.dart';
 import 'package:smart_app/view/product_add_page.dart';
 import 'package:smart_app/view/product_edit_page.dart';
@@ -13,17 +14,22 @@ class ProductPage extends StatefulWidget {
 }
 
 class _ProductPageState extends State<ProductPage> {
+  final repository = ProductRepository();
   final searchController = TextEditingController();
+  final selectedProducts = <ProductRecord>{};
+
   String filter = '전체';
   bool showSearch = false;
   bool deleteMode = false;
-  final selectedProducts = <ProductRecord>{};
+  bool isLoading = false;
+  String? errorMessage;
+  List<ProductRecord> products = [];
 
-  final products = [
-    const ProductRecord('양광 사과', '5kg 박스', 39000, 42, '판매 중', AppColors.mint),
-    const ProductRecord('부사 사과', '3kg 박스', 32000, 18, '준비 중', AppColors.yellow),
-    const ProductRecord('양광 사과', '7kg 박스', 68000, 12, '판매 중지', Color(0xffFFE1DD)),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
 
   @override
   void dispose() {
@@ -31,16 +37,34 @@ class _ProductPageState extends State<ProductPage> {
     super.dispose();
   }
 
+  Future<void> _loadProducts() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    try {
+      final records = await repository.fetchProducts();
+      if (!mounted) return;
+      setState(() => products = records);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
   Future<void> _openAdd() async {
     final product = await Navigator.of(context).push<ProductRecord>(
       MaterialPageRoute(builder: (_) => const ProductAddPage()),
     );
+    if (product == null) return;
     setState(() {
       deleteMode = false;
       selectedProducts.clear();
-      if (product != null) {
-        products.add(product);
-      }
+      products.insert(0, product);
     });
   }
 
@@ -48,13 +72,41 @@ class _ProductPageState extends State<ProductPage> {
     final updated = await Navigator.of(context).push<ProductRecord>(
       MaterialPageRoute(builder: (_) => ProductEditPage(product: product)),
     );
-    if (updated != null) {
-      setState(() {
-        final index = products.indexOf(product);
+    if (updated == null) return;
+    setState(() {
+      final index = products.indexWhere(
+        (item) => item.productId == updated.productId,
+      );
+      if (index >= 0) {
+        products[index] = updated;
+      }
+    });
+  }
+
+  Future<void> _hideSelectedProducts() async {
+    final selected = selectedProducts.toList();
+    try {
+      for (final product in selected) {
+        final updated = await repository.updateProductStatus(
+          product: product,
+          statusCode: 'HIDDEN',
+        );
+        final index = products.indexWhere(
+          (item) => item.productId == updated.productId,
+        );
         if (index >= 0) {
           products[index] = updated;
         }
+      }
+      if (!mounted) return;
+      setState(() {
+        selectedProducts.clear();
+        deleteMode = false;
       });
+      showOwnerSnack(context, '선택한 상품을 판매 숨김으로 변경했습니다.');
+    } catch (error) {
+      if (!mounted) return;
+      showOwnerSnack(context, error.toString());
     }
   }
 
@@ -64,22 +116,15 @@ class _ProductPageState extends State<ProductPage> {
       return;
     }
     if (selectedProducts.isEmpty) {
-      showOwnerSnack(context, '삭제할 상품을 선택하세요.');
+      showOwnerSnack(context, '숨김 처리할 상품을 선택하세요.');
       return;
     }
     showConfirmAction(
       context: context,
-      title: '상품 삭제',
-      message: '선택한 ${selectedProducts.length}개 상품을 삭제할까요?',
-      confirmLabel: '삭제',
-      onConfirm: () {
-        setState(() {
-          products.removeWhere(selectedProducts.contains);
-          selectedProducts.clear();
-          deleteMode = false;
-        });
-        showOwnerSnack(context, '상품 목록을 갱신했습니다.');
-      },
+      title: '상품 숨김',
+      message: '선택한 ${selectedProducts.length}개 상품을 판매 숨김으로 변경할까요?',
+      confirmLabel: '숨김',
+      onConfirm: _hideSelectedProducts,
     );
   }
 
@@ -88,11 +133,11 @@ class _ProductPageState extends State<ProductPage> {
     final query = searchController.text.trim().toLowerCase();
     final visible = products.where((product) {
       final matchesFilter = filter == '전체' || product.status == filter;
+      final searchable =
+          '${product.name} ${product.variety} ${product.packageUnit} '
+          '${product.priceLabel} ${product.status}';
       final matchesQuery =
-          query.isEmpty ||
-          '${product.name} ${product.packageUnit} ${product.priceLabel} ${product.stockKg} ${product.status}'
-              .toLowerCase()
-              .contains(query);
+          query.isEmpty || searchable.toLowerCase().contains(query);
       return matchesFilter && matchesQuery;
     }).toList();
 
@@ -107,13 +152,16 @@ class _ProductPageState extends State<ProductPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ActionChipIcon(
+              icon: Icons.refresh,
+              onPressed: isLoading ? null : _loadProducts,
+            ),
+            const SizedBox(width: 6),
+            ActionChipIcon(
               icon: showSearch ? Icons.close : Icons.search,
               onPressed: () {
                 setState(() {
                   showSearch = !showSearch;
-                  if (!showSearch) {
-                    searchController.clear();
-                  }
+                  if (!showSearch) searchController.clear();
                 });
               },
             ),
@@ -141,11 +189,19 @@ class _ProductPageState extends State<ProductPage> {
                       ),
               ),
             ),
+          if (isLoading) const LinearProgressIndicator(),
+          if (errorMessage != null)
+            NoticeBox(color: const Color(0xffFFE9E2), text: errorMessage!),
           FilterTabs(
             labels: const ['전체', '판매 중', '준비 중', '판매 중지'],
             selected: filter,
             onChanged: (value) => setState(() => filter = value),
           ),
+          if (!isLoading && visible.isEmpty)
+            const NoticeBox(
+              color: Color(0xffF4F7F1),
+              text: '표시할 상품이 없습니다.',
+            ),
           for (final product in visible)
             deleteMode
                 ? _ProductDeleteTile(
@@ -181,7 +237,8 @@ class _ProductPageState extends State<ProductPage> {
                     });
                   },
                   child: Text(
-                    visible.isNotEmpty && selectedProducts.length == visible.length
+                    visible.isNotEmpty &&
+                            selectedProducts.length == visible.length
                         ? '전체 선택 해제'
                         : '전체 선택',
                   ),
@@ -189,7 +246,7 @@ class _ProductPageState extends State<ProductPage> {
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: _toggleDeleteMode,
-                  child: const Text('삭제'),
+                  child: const Text('숨김'),
                 ),
                 const Spacer(),
                 TextButton(
@@ -203,12 +260,12 @@ class _ProductPageState extends State<ProductPage> {
             )
           else
             Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _toggleDeleteMode,
-              child: const Text('삭제'),
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _toggleDeleteMode,
+                child: const Text('상품 숨김'),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -223,10 +280,6 @@ class _ProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stockStyle = TextStyle(
-      color: product.stockKg <= 10 ? Colors.red : AppColors.muted,
-      fontWeight: FontWeight.w800,
-    );
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
@@ -266,19 +319,11 @@ class _ProductTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        children: [
-                          TextSpan(text: '${product.priceLabel} · '),
-                          TextSpan(
-                            text: '잔여 ${product.stockKg}박스',
-                            style: stockStyle,
-                          ),
-                        ],
+                    Text(
+                      '${product.priceLabel} · 열린 슬롯 ${product.stockKg}개',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -316,7 +361,7 @@ class _ProductDeleteTile extends StatelessWidget {
         '${product.name} · ${product.packageUnit}',
         style: const TextStyle(fontWeight: FontWeight.w900),
       ),
-      subtitle: Text('${product.priceLabel} · 잔여 ${product.stockKg}박스'),
+      subtitle: Text('${product.priceLabel} · ${product.status}'),
       controlAffinity: ListTileControlAffinity.leading,
       tileColor: Colors.white,
       shape: RoundedRectangleBorder(
